@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { rating } from "@/lib/data";
+import { HELP } from "@/lib/help";
 import { fmtDate } from "@/lib/format";
 import { Icon, type IconName } from "../Icons";
 import { useStore } from "./DemoStore";
@@ -209,6 +210,12 @@ const PAGES: { title: string; href: string; icon: IconName; words: string }[] =
       words: "export pack history",
     },
     {
+      title: "Help",
+      href: "/dashboard/help",
+      icon: "help",
+      words: "guides how to support articles question",
+    },
+    {
       title: "Settings",
       href: "/dashboard/settings",
       icon: "settings",
@@ -249,6 +256,7 @@ const ORDER = [
   "Notices",
   "People",
   "Subcontractors",
+  "Help",
 ];
 
 const norm = (s: string) => s.toLowerCase();
@@ -534,6 +542,17 @@ export function GlobalSearch({
         sub: `${x.trade} · ${x.approved ? "Approved" : "Pending"}`,
         href: "/dashboard/subcontractors",
         text: `${x.name} ${x.trade} ${x.contact} ${x.docs.map((d) => d.kind).join(" ")} subcontractor`,
+      });
+
+    for (const a of HELP)
+      hits.push({
+        id: `h-${a.id}`,
+        group: "Help",
+        icon: "help",
+        title: a.title,
+        sub: `Help · ${a.category}`,
+        href: `/dashboard/help/${a.id}`,
+        text: `${a.title} ${a.summary} ${a.category} help how`,
       });
 
     return hits;

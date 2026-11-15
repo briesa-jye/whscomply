@@ -106,6 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     href === "/dashboard" ? pathname === href : pathname.startsWith(href);
   const current = ALL_ITEMS.find((n) => isActive(n.href));
   const inSettings = pathname.startsWith("/dashboard/settings");
+  const inHelp = pathname.startsWith("/dashboard/help");
 
   const sidebar = (
     <div className="flex h-full min-h-0 flex-col">
@@ -229,6 +230,17 @@ export function AppShell({ children }: { children: ReactNode }) {
               Sample data
             </span>
             <NotificationsBell />
+            <Link
+              href="/dashboard/help"
+              aria-label="Help"
+              title="Help"
+              aria-current={inHelp ? "page" : undefined}
+              className={`flex h-10 w-10 items-center justify-center rounded-full hover:bg-tint ${
+                inHelp ? "bg-accent/20" : ""
+              }`}
+            >
+              <Icon name="help" className="h-5 w-5" />
+            </Link>
             <Link
               href="/dashboard/settings"
               aria-label="Settings"
