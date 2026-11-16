@@ -488,6 +488,9 @@ Choose **Export (CSV)** to download the numbers.`,
     body: `## What it is
 ISO Vault writes the documentation for three standards: **ISO 9001** (quality), **ISO 45001** (health and safety) and **ISO 14001** (environmental). Each set has the policy, scope, procedures, registers, forms, an internal audit checklist and a management review template that an auditor expects.
 
+## Cost
+Each standard is a one-off **A$1,500**, with no subscription. You can browse the whole set for free, then choose **Unlock** on a standard to pay and start generating. Each standard is bought separately, and receipts are under **Settings, Billing**.
+
 ## Set it up
 1. Open **ISO Vault** and fill in your business details. Everything is written from these, so the more specific you are, the better the documents.
 2. Open a standard and choose **Generate** on one document, or **Generate all** for the whole set.

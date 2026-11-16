@@ -8,7 +8,8 @@ import { useIso } from "@/components/iso/useIso";
 import { btnDark, btnLight, Card, EmptyState, PageHeading, Pill, Progress, Segmented } from "@/components/app/ui";
 import { CATALOGUE, coverage, docNumber } from "@/lib/iso/catalogue";
 import { download, fileSafe, wordHtml } from "@/lib/iso/markdown";
-import { isStd, STANDARDS } from "@/lib/iso/standards";
+import { ISO_PRICE, isStd, money, STANDARDS } from "@/lib/iso/standards";
+import { PurchaseModal } from "@/components/iso/PurchaseModal";
 import { docKey, type DocKind, type IsoStd } from "@/lib/iso/types";
 import { fmtDate } from "@/lib/format";
 
@@ -19,6 +20,7 @@ export default function IsoStandard() {
   const { std } = useParams<{ std: string }>();
   const v = useIso();
   const [tab, setTab] = useState<(typeof TABS)[number]>("Documents");
+  const [buying, setBuying] = useState(false);
 
   if (!isStd(std))
     return (
@@ -34,6 +36,8 @@ export default function IsoStandard() {
   const list = CATALOGUE[std];
   const missing = list.length - st.generated;
   const busy = v.busy !== null;
+  const open = v.unlocked(std);
+  const bought = v.iso.purchases[std];
 
   function compile() {
     const parts = list
@@ -59,7 +63,11 @@ export default function IsoStandard() {
         sub={`${m.topic}. ${st.approved} of ${st.total} approved, ${st.generated} generated.`}
         actions={
           <>
-            {busy ? (
+            {!open ? (
+              <button type="button" onClick={() => setBuying(true)} className={btnDark}>
+                <Icon name="lock" className="h-4 w-4" /> Unlock for {money(ISO_PRICE)}
+              </button>
+            ) : busy ? (
               <button type="button" onClick={v.stop} className={btnLight}>
                 Stop
               </button>
@@ -69,7 +77,7 @@ export default function IsoStandard() {
                 {missing ? `Generate ${missing === list.length ? "all" : `remaining ${missing}`}` : "All generated"}
               </button>
             )}
-            <button type="button" disabled={!st.generated} onClick={compile} className={`${btnLight} disabled:opacity-40`}>
+            <button type="button" disabled={!open || !st.generated} onClick={compile} className={`${btnLight} disabled:opacity-40`}>
               <Icon name="download" className="h-4 w-4" /> Download manual
             </button>
           </>
@@ -81,7 +89,26 @@ export default function IsoStandard() {
           {v.queue ? `Writing document ${v.queue.done + 1} of ${v.queue.total}. You can leave this page open and keep working.` : v.note}
         </div>
       )}
-      {!v.iso.profile.scope && (
+      {!open && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent bg-accent/10 p-5">
+          <div className="min-w-0">
+            <p className="font-display text-lg font-extrabold">Unlock the {m.name} set for {money(ISO_PRICE)}</p>
+            <p className="text-sm text-ink-soft">
+              One payment, no subscription. You get all {st.total} documents, written from your business and records,
+              to generate, edit, approve and download. Browse everything in the set below first.
+            </p>
+          </div>
+          <button type="button" onClick={() => setBuying(true)} className={btnDark}>
+            Unlock {m.short}
+          </button>
+        </div>
+      )}
+      {bought && (
+        <p className="mb-4 text-xs text-ink-soft">
+          Unlocked {fmtDate(bought.paidAt)} · receipt {bought.receipt} · {money(bought.amount)} paid with {bought.brand} ending {bought.last4}
+        </p>
+      )}
+      {open && !v.iso.profile.scope && (
         <div className="mb-4 rounded-xl border border-accent bg-accent/10 px-4 py-3 text-sm">
           Add your business details first so the documents are specific to you.{" "}
           <Link href="/dashboard/iso-vault" className="font-semibold underline">Go to your business details</Link>
@@ -134,11 +161,15 @@ export default function IsoStandard() {
                           ) : doc ? (
                             <Pill tone={doc.status === "Approved" ? "ok" : "owed"}>{doc.status === "Approved" ? "Approved" : "Draft"}</Pill>
                           ) : (
-                            <Pill>Not generated</Pill>
+                            <Pill>{open ? "Not generated" : "Locked"}</Pill>
                           )}
                           {!doc && !busy && (
-                            <button type="button" onClick={() => v.generate(std, d)} className={`${btnLight} !px-3 !py-1.5 text-xs`}>
-                              Generate
+                            <button
+                              type="button"
+                              onClick={() => (open ? v.generate(std, d) : setBuying(true))}
+                              className={`${btnLight} !px-3 !py-1.5 text-xs`}
+                            >
+                              {open ? "Generate" : "Unlock"}
                             </button>
                           )}
                         </li>
@@ -183,6 +214,7 @@ export default function IsoStandard() {
           </ul>
         </Card>
       )}
+      {buying && <PurchaseModal std={std} onClose={() => setBuying(false)} />}
     </>
   );
 }

@@ -98,9 +98,19 @@ export type IsoDocState = {
   approvedBy?: string;
 };
 
+export type IsoPurchase = {
+  paidAt: string;
+  amount: number;
+  receipt: string;
+  brand: string;
+  last4: string;
+};
+
 export type IsoState = {
   profile: IsoProfile;
   docs: Record<string, IsoDocState>;
+  /** one entry per standard that has been bought */
+  purchases: Partial<Record<IsoStd, IsoPurchase>>;
 };
 
 export const docKey = (std: IsoStd, id: string) => `${std}:${id}`;

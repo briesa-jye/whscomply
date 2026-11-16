@@ -79,9 +79,10 @@ import {
 } from "@/lib/data";
 import { clearFiles, type Attachment } from "@/lib/files";
 import { todayISO } from "@/lib/format";
-import type { IsoDocState, IsoProfile, IsoState } from "@/lib/iso/types";
+import { ISO_PRICE, money } from "@/lib/iso/standards";
+import type { IsoDocState, IsoProfile, IsoState, IsoStd } from "@/lib/iso/types";
 
-const KEY = "whscomply-demo-v8";
+const KEY = "whscomply-demo-v9";
 
 export const ALL = "all";
 
@@ -169,6 +170,7 @@ const SEED: Saved = {
       customers: "",
     },
     docs: {},
+    purchases: {},
   },
 };
 
@@ -212,7 +214,8 @@ function valid(p: Saved | null): p is Saved {
     Array.isArray(p.invites) &&
     !!p.iso &&
     !!p.iso.profile &&
-    !!p.iso.docs
+    !!p.iso.docs &&
+    !!p.iso.purchases
   );
 }
 
@@ -490,6 +493,7 @@ type Store = Saved & {
   setIsoProfile: (patch: Partial<IsoProfile>) => void;
   saveIsoDoc: (key: string, doc: IsoDocState, note?: string) => void;
   removeIsoDoc: (key: string) => void;
+  buyIso: (std: IsoStd, card: { brand: string; last4: string }) => string;
   respondInvite: (id: string, accept: boolean) => void;
   /** withdraw an invitation the subcontractor has not answered */
   cancelInvite: (id: string) => void;
@@ -1694,6 +1698,35 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     if (note)
       act(write, ev("Documents", ALL, note, "", doc.status));
     else update(write);
+  },
+  buyIso: (std, card) => {
+    const receipt = `ISO-${std}-${uid().slice(0, 6).toUpperCase()}`;
+    act(
+      (s) => ({
+        ...s,
+        iso: {
+          ...s.iso,
+          purchases: {
+            ...s.iso.purchases,
+            [std]: {
+              paidAt: todayISO(),
+              amount: ISO_PRICE,
+              receipt,
+              brand: card.brand,
+              last4: card.last4,
+            },
+          },
+        },
+      }),
+      ev(
+        "Documents",
+        ALL,
+        `bought the ISO ${std} document set from ISO Vault (${money(ISO_PRICE)})`,
+        "Locked",
+        "Unlocked",
+      ),
+    );
+    return receipt;
   },
   removeIsoDoc: (key) =>
     update((s) => {

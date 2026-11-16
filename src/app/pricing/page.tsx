@@ -26,6 +26,10 @@ const faqs = [
     "Every builder plan starts with a 14-day free trial. You add a card to start, nothing is charged for 14 days, and you can cancel before then.",
   ],
   [
+    "What does ISO Vault cost?",
+    "ISO Vault is a one-off $1,500 for each standard you want to certify: ISO 9001 (quality), ISO 45001 (health and safety) and ISO 14001 (environmental). It is separate from your monthly plan, with no subscription. The documents prepare you for an audit; a certification body issues the certificate.",
+  ],
+  [
     "Can we change plan later?",
     "Yes. A plan is a limit on live projects, not a different system, so nothing is migrated when you move up or down.",
   ],
@@ -83,6 +87,41 @@ export default function Pricing() {
       </ul>
 
       <PricingGrid />
+
+      <section
+        data-reveal
+        className="mx-auto mt-16 max-w-6xl px-5 sm:px-8"
+      >
+        <div className="rounded-[2rem] bg-ink p-8 text-bg sm:p-12">
+          <Eyebrow>ISO Vault</Eyebrow>
+          <h2 className="mt-5 max-w-2xl font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+            Your ISO documents, written from your business. $1,500 once per standard.
+          </h2>
+          <p className="mt-4 max-w-2xl text-bg/75">
+            Policies, procedures, registers, forms, an internal audit checklist and a management review template,
+            tailored to your work and filled from the records you already keep. Pay once for each standard. No
+            subscription.
+          </p>
+          <ul className="mt-8 grid gap-4 sm:grid-cols-3">
+            {[
+              ["ISO 9001", "Quality management"],
+              ["ISO 45001", "Health and safety"],
+              ["ISO 14001", "Environmental management"],
+            ].map(([n, t]) => (
+              <li key={n} className="rounded-2xl border border-bg/20 p-5">
+                <p className="font-display text-xl font-extrabold">{n}</p>
+                <p className="text-sm text-bg/75">{t}</p>
+                <p className="mt-3 font-display text-2xl font-extrabold">$1,500</p>
+                <p className="text-xs text-bg/60">one-off</p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-6 text-sm text-bg/60">
+            Documents prepare you for certification. A certification body accredited by JAS-ANZ audits and issues the
+            certificate.
+          </p>
+        </div>
+      </section>
 
       <section className="mx-auto mt-24 grid max-w-6xl gap-12 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr]">
         <div data-reveal>

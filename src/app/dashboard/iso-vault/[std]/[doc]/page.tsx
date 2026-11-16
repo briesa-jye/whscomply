@@ -6,9 +6,10 @@ import { useState } from "react";
 import { Icon } from "@/components/Icons";
 import { useIso } from "@/components/iso/useIso";
 import { btnDark, btnLight, Card, EmptyState, Pill } from "@/components/app/ui";
+import { PurchaseModal } from "@/components/iso/PurchaseModal";
 import { docNumber, findDoc } from "@/lib/iso/catalogue";
 import { download, fileSafe, mdToHtml, wordCount, wordHtml } from "@/lib/iso/markdown";
-import { isStd, STANDARDS } from "@/lib/iso/standards";
+import { ISO_PRICE, isStd, money, STANDARDS } from "@/lib/iso/standards";
 import { docKey } from "@/lib/iso/types";
 import { me } from "@/lib/data";
 import { fmtDate } from "@/lib/format";
@@ -18,6 +19,7 @@ export default function IsoDocument() {
   const v = useIso();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [buying, setBuying] = useState(false);
 
   const spec = isStd(std) ? findDoc(std, docId) : undefined;
   if (!v.ready) return <p className="py-10 text-center text-sm text-ink-soft">Loading the document</p>;
@@ -26,6 +28,30 @@ export default function IsoDocument() {
       <Card>
         <EmptyState title="That document was not found." action={<Link href="/dashboard/iso-vault" className={btnDark}>Back to ISO Vault</Link>} />
       </Card>
+    );
+
+  if (!v.unlocked(std))
+    return (
+      <>
+        <p className="mb-2 text-sm">
+          <Link href={`/dashboard/iso-vault/${std}`} className="inline-flex items-center gap-1 text-ink-soft hover:text-ink">
+            <Icon name="arrow" className="h-4 w-4 rotate-180" /> {STANDARDS[std].name}
+          </Link>
+        </p>
+        <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{spec.title}</h1>
+        <Card className="mt-4">
+          <EmptyState
+            title={`Unlock ${STANDARDS[std].name} to write this document`}
+            body={`${spec.purpose.replace("{company}", v.iso.profile.company || "the business")} The whole set is ${money(ISO_PRICE)}, one-off.`}
+            action={
+              <button type="button" onClick={() => setBuying(true)} className={btnDark}>
+                <Icon name="lock" className="h-4 w-4" /> Unlock for {money(ISO_PRICE)}
+              </button>
+            }
+          />
+        </Card>
+        {buying && <PurchaseModal std={std} onClose={() => setBuying(false)} />}
+      </>
     );
 
   const key = docKey(std, spec.id);

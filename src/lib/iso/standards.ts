@@ -164,5 +164,9 @@ export const STANDARDS: Record<IsoStd, StdMeta> = {
 };
 
 export const STD_LIST: IsoStd[] = ["9001", "45001", "14001"];
+
+/** One-off price in Australian dollars for the full document set of one standard. */
+export const ISO_PRICE = 1500;
+export const money = (n: number) => `A$${n.toLocaleString("en-AU")}`;
 export const isStd = (v: unknown): v is IsoStd =>
   v === "9001" || v === "45001" || v === "14001";

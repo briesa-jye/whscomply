@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { Icon } from "@/components/Icons";
 import { useIso } from "@/components/iso/useIso";
 import { btnDark, Card, CardHead, Field, field, PageHeading, Pill, Progress } from "@/components/app/ui";
-import { STANDARDS, STD_LIST } from "@/lib/iso/standards";
+import { ISO_PRICE, money, STANDARDS, STD_LIST } from "@/lib/iso/standards";
 import type { IsoProfile } from "@/lib/iso/types";
 
 const TYPES = ["Residential", "Commercial", "Industrial", "Civil and infrastructure", "Fit-out", "Renovation and extension", "Multi-residential", "Heritage"];
@@ -56,7 +56,7 @@ export default function IsoVaultHome() {
     <>
       <PageHeading
         title="ISO Vault"
-        sub="Your ISO 9001, ISO 45001 and ISO 14001 documents, written from your own business details and records."
+        sub={`Your ISO 9001, ISO 45001 and ISO 14001 documents, written from your own business details and records. ${money(ISO_PRICE)} one-off for each standard you want certified.`}
       />
 
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
@@ -188,14 +188,24 @@ export default function IsoVaultHome() {
               <h3 className="mt-1 font-display text-2xl font-extrabold tracking-tight">{m.name}</h3>
               <p className="mt-2 flex-1 text-sm text-ink-soft">{m.blurb}</p>
               <div className="mt-5 space-y-2">
-                <Progress pct={st.pct} />
-                <p className="text-xs text-ink-soft">
-                  {st.approved} of {st.total} approved · {st.generated} generated · {st.mandatoryApproved} of{" "}
-                  {st.mandatory} required documents approved
-                </p>
+                {v.unlocked(id) ? (
+                  <>
+                    <Progress pct={st.pct} />
+                    <p className="text-xs text-ink-soft">
+                      {st.approved} of {st.total} approved · {st.generated} generated · {st.mandatoryApproved} of{" "}
+                      {st.mandatory} required documents approved
+                    </p>
+                  </>
+                ) : (
+                  <p className="flex items-center gap-2 text-sm">
+                    <Icon name="lock" className="h-4 w-4 text-ink-soft" />
+                    <span className="font-semibold">{money(ISO_PRICE)}</span>
+                    <span className="text-ink-soft">one-off · {st.total} documents</span>
+                  </p>
+                )}
               </div>
               <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold">
-                Open {m.short} <Icon name="arrow" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                {v.unlocked(id) ? `Open ${m.short}` : `View ${m.short} and unlock`} <Icon name="arrow" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </span>
             </Link>
           );

@@ -41,6 +41,11 @@ export function useIso() {
     [s.projects, s.workers, s.subs, s.swms, s.risks, s.chemicals, s.plant, s.incidents],
   );
 
+  const unlocked = useCallback(
+    (std: IsoStd) => !!iso.purchases[std],
+    [iso.purchases],
+  );
+
   const stats = useCallback(
     (std: IsoStd) => {
       const list = CATALOGUE[std];
@@ -81,6 +86,7 @@ export function useIso() {
 
   const generate = useCallback(
     async (std: IsoStd, spec: IsoDocSpec) => {
+      if (!iso.purchases[std]) return null;
       const key = docKey(std, spec.id);
       setBusy(key);
       setPartial("");
@@ -106,11 +112,12 @@ export function useIso() {
         setPartial("");
       }
     },
-    [facts, iso.profile, save],
+    [facts, iso.profile, iso.purchases, save],
   );
 
   const generateAll = useCallback(
     async (std: IsoStd) => {
+      if (!iso.purchases[std]) return;
       const todo = CATALOGUE[std].filter((d) => !iso.docs[docKey(std, d.id)]);
       if (!todo.length) return;
       abort.current = new AbortController();
@@ -131,7 +138,7 @@ export function useIso() {
       setQueue(null);
       setBusy(null);
     },
-    [facts, iso.docs, iso.profile, save],
+    [facts, iso.docs, iso.profile, iso.purchases, save],
   );
 
   const stop = useCallback(() => abort.current?.abort(), []);
@@ -150,5 +157,5 @@ export function useIso() {
     [iso.docs, s],
   );
 
-  return { ...s, iso, aiOn, busy, partial, note, queue, facts, stats, generate, generateAll, stop, approve, save };
+  return { ...s, iso, aiOn, busy, partial, note, queue, facts, stats, unlocked, generate, generateAll, stop, approve, save };
 }

@@ -17,6 +17,9 @@ import {
 } from "@/components/app/ui";
 import { ROLES, type Role, type Settings } from "@/lib/data";
 import { BUILDER_PLANS } from "@/lib/plans";
+import { STANDARDS, money } from "@/lib/iso/standards";
+import type { IsoStd } from "@/lib/iso/types";
+import { fmtDate } from "@/lib/format";
 
 const TABS = ["Company", "Team", "Billing", "Notifications"] as const;
 
@@ -264,6 +267,33 @@ export default function SettingsPage() {
             </p>
           ) : (
             <BillingBody settings={s.settings} />
+          )}
+        </Card>
+      )}
+      {tab === "Billing" && (
+        <Card className="mt-6 max-w-2xl">
+          <CardHead title="ISO Vault purchases" sub="One-off, per standard" />
+          {Object.keys(s.iso.purchases).length ? (
+            <ul className="divide-y divide-line text-sm">
+              {(Object.keys(s.iso.purchases) as IsoStd[]).map((k) => {
+                const p = s.iso.purchases[k]!;
+                return (
+                  <li key={k} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5">
+                    <span>
+                      <span className="block font-semibold">{STANDARDS[k].name} document set</span>
+                      <span className="block text-xs text-ink-soft">
+                        {fmtDate(p.paidAt)} · receipt {p.receipt} · {p.brand} ending {p.last4}
+                      </span>
+                    </span>
+                    <span className="font-semibold tabular-nums">{money(p.amount)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="p-5 text-sm text-ink-soft">
+              Nothing bought yet. ISO Vault unlocks each standard for {money(1500)}, one-off.
+            </p>
           )}
         </Card>
       )}
