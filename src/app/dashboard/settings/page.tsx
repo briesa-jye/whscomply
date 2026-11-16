@@ -16,7 +16,7 @@ import {
   TabBar,
 } from "@/components/app/ui";
 import { ROLES, type Role, type Settings } from "@/lib/data";
-import { BUILDER_PLANS } from "@/lib/plans";
+import { BillingSection } from "./BillingSection";
 import { STANDARDS, money } from "@/lib/iso/standards";
 import type { IsoStd } from "@/lib/iso/types";
 import { fmtDate } from "@/lib/format";
@@ -254,24 +254,20 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {tab === "Billing" && (
-        <Card className="max-w-2xl">
-          <CardHead
-            title="Plan and billing"
-            sub="Builders pay by live projects, never per worker"
-          />
-          {s.settings.account === "subcontractor" ? (
+      {tab === "Billing" &&
+        (s.settings.account === "subcontractor" ? (
+          <Card className="max-w-2xl">
+            <CardHead title="Plan and billing" sub="Free for subcontractors" />
             <p className="p-5 text-sm text-ink-soft">
               Subcontractor accounts are free. Your builder pays for the
               projects you are invited to.
             </p>
-          ) : (
-            <BillingBody settings={s.settings} />
-          )}
-        </Card>
-      )}
+          </Card>
+        ) : (
+          <BillingSection />
+        ))}
       {tab === "Billing" && (
-        <Card className="mt-6 max-w-2xl">
+        <Card className="mt-6">
           <CardHead title="ISO Vault purchases" sub="One-off, per standard" />
           {Object.keys(s.iso.purchases).length ? (
             <ul className="divide-y divide-line text-sm">
@@ -349,47 +345,5 @@ export default function SettingsPage() {
         </Card>
       )}
     </>
-  );
-}
-
-function BillingBody({ settings }: { settings: Settings }) {
-  const plan = BUILDER_PLANS.find((p) => p.name === settings.plan);
-  const card = settings.card;
-  const ends = settings.trialEnds
-    ? new Date(settings.trialEnds + "T00:00:00").toLocaleDateString("en-AU", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
-    : "";
-  return (
-    <div className="space-y-4 p-5 text-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="font-semibold text-ink">
-            {plan ? `${plan.name} plan` : "Demo workspace"}
-          </p>
-          <p className="text-ink-soft">
-            {plan
-              ? `${plan.projects} · A$${plan.price}/month`
-              : "Sign up to choose a plan."}
-          </p>
-        </div>
-        {plan && <Pill tone="neutral">Free trial</Pill>}
-      </div>
-      {ends && (
-        <p className="rounded-lg bg-tint px-3.5 py-2.5 text-ink">
-          Your free trial ends {ends}. Nothing is charged before then.
-        </p>
-      )}
-      {card && (
-        <div className="flex items-center justify-between rounded-lg border border-line px-3.5 py-2.5">
-          <span className="text-ink">
-            {card.brand} ending {card.last4}
-          </span>
-          <span className="text-ink-soft">Expires {card.exp}</span>
-        </div>
-      )}
-    </div>
   );
 }

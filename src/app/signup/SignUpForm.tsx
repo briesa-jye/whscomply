@@ -493,7 +493,7 @@ function PlanStep({
                 <span className="block font-display text-lg font-bold tabular-nums text-ink">
                   ${p.price}
                 </span>
-                <span className="block text-[11px] text-ink-soft">/month</span>
+                <span className="block text-[11px] text-ink-soft">/month + GST</span>
               </span>
             </label>
           );
@@ -567,7 +567,7 @@ function CardStep({ plan, details }: { plan: BuilderPlan; details: Details }) {
       <div className="mt-5 rounded-xl border border-line bg-bg p-3.5 text-sm">
         <div className="flex items-center justify-between">
           <span className="font-semibold text-ink">{plan} plan</span>
-          <span className="tabular-nums text-ink">A${price}/mo</span>
+          <span className="tabular-nums text-ink">A${price}/mo + GST</span>
         </div>
         <div className="mt-1.5 flex items-center justify-between border-t border-line pt-1.5">
           <span className="text-ink-soft">Due today</span>

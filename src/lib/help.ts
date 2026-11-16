@@ -514,6 +514,28 @@ The **Clause coverage** tab lists every clause of the standard, the question an 
 Documents do not certify you. A certification body accredited by JAS-ANZ audits a system you have put into practice and issues the certificate. Treat everything generated as a draft, and check anything with legal consequences with your regulator or adviser.`,
   },
   {
+    id: "billing-plans",
+    title: "Changing your plan and billing",
+    category: "Business and settings",
+    icon: "scale",
+    summary: "Upgrade, downgrade, update your card and download tax invoices.",
+    open: { href: "/dashboard/settings", label: "Open settings" },
+    body: `## Your plan
+Open **Settings**, then **Billing**. Small is A$149, Medium A$349 and Large A$549 a month plus GST, by the number of live projects, never per worker. Subcontractors are free. Billing runs by calendar month and renews on the 1st.
+
+## Upgrading
+Choose a bigger plan. It starts straight away. You see the exact figures first: the rest of the month on the new plan, less the unused part of the old one, plus GST. That difference is charged to your card now, with a tax invoice. From the next billing date you pay the new monthly price.
+
+## Downgrading
+Choose a smaller plan. You keep your current plan until the next billing date and then move down. There is no refund for the rest of the month. You can cancel the change before then. You cannot move to a plan with fewer live projects than you have, so close or archive finished projects first.
+
+## During the free trial
+Switching plan is free and takes effect immediately. The first charge is when the trial ends.
+
+## Card and invoices
+**Update card** replaces the card on file. Only the brand, last four digits and expiry are kept. Every charge has a tax invoice you can download, with GST shown separately.`,
+  },
+  {
     id: "documents-audit",
     title: "Documents and the audit pack",
     category: "Business and settings",

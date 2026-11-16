@@ -31,7 +31,11 @@ const faqs = [
   ],
   [
     "Can we change plan later?",
-    "Yes. A plan is a limit on live projects, not a different system, so nothing is migrated when you move up or down.",
+    "Yes, and you see the exact cost before anything changes. An upgrade starts straight away and you pay only the difference for the rest of the month. A downgrade starts at the next billing date, with no refund for the current month. During the free trial a plan change is free. Nothing is migrated either way.",
+  ],
+  [
+    "Is GST included?",
+    "Prices are per month plus GST. Your tax invoice shows the GST separately.",
   ],
   [
     "Does an inspector need a seat?",

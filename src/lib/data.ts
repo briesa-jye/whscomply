@@ -1,3 +1,5 @@
+import type { Invoice } from "./billing";
+import type { BuilderPlan } from "./plans";
 import type { Attachment } from "./files";
 import { todayISO } from "./format";
 
@@ -317,9 +319,14 @@ export type Settings = {
   account?: "builder" | "subcontractor";
   /** which subcontractor record the subcontractor portal shows */
   subId?: string;
-  plan?: string;
+  plan?: BuilderPlan;
+  /** ISO date the free trial ends, set at sign up. Missing means a paying customer. */
   trialEnds?: string;
   card?: { brand: string; last4: string; exp: string; name: string };
+  /** A downgrade booked for the next billing date. */
+  pendingPlan?: { plan: BuilderPlan; on: string };
+  /** Tax invoices, newest first. Missing means the demo's sample invoices. */
+  invoices?: Invoice[];
 };
 
 /* ---------- permits, plant, chemicals, emergency, visitors, documents ---------- */
@@ -1417,6 +1424,8 @@ export const seedSettings: Settings = {
     email: "safety@example.com",
     phone: "02 5550 0142",
   },
+  plan: "Medium",
+  card: { brand: "Visa", last4: "4242", exp: "08/28", name: "Northgate Builders" },
   notify: { tickets: true, insurances: true, actions: true, incidents: true },
   warnDays: 30,
 };

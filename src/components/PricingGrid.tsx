@@ -129,7 +129,7 @@ export function PricingGrid() {
               <span
                 className={`ml-1 text-base font-semibold ${on ? "text-bg/75" : "text-ink-soft"}`}
               >
-                / month
+                / month + GST
               </span>
             </p>
             <p

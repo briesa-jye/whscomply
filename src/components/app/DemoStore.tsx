@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useSyncExternalStore,
   type ReactNode,
@@ -79,10 +80,20 @@ import {
 } from "@/lib/data";
 import { clearFiles, type Attachment } from "@/lib/files";
 import { todayISO } from "@/lib/format";
+import {
+  MIN_CHARGE,
+  makeInvoice,
+  nextInvoiceId,
+  prorationLines,
+  SEED_INVOICES,
+  type Proration,
+} from "@/lib/billing";
+import { PLANS } from "@/lib/billing";
+import type { BuilderPlan } from "@/lib/plans";
 import { ISO_PRICE, money } from "@/lib/iso/standards";
 import type { IsoDocState, IsoProfile, IsoState, IsoStd } from "@/lib/iso/types";
 
-const KEY = "whscomply-demo-v9";
+const KEY = "whscomply-demo-v10";
 
 export const ALL = "all";
 
@@ -490,6 +501,15 @@ type Store = Saved & {
   updateCompany: (patch: Partial<Settings["company"]>) => void;
   setNotify: (patch: Partial<Settings["notify"]>) => void;
   setWarnDays: (n: number) => void;
+  /** switch plan during the free trial: nothing is charged */
+  setPlan: (plan: BuilderPlan) => void;
+  /** upgrade now and record the part-month invoice (none if under the minimum charge) */
+  upgradePlan: (p: Proration) => void;
+  /** book a downgrade for the next billing date */
+  scheduleDowngrade: (plan: BuilderPlan, on: string) => void;
+  cancelPlanChange: () => void;
+  applyDuePlanChange: (today: string) => void;
+  updateCard: (card: { brand: string; last4: string; exp: string; name: string }) => void;
   setIsoProfile: (patch: Partial<IsoProfile>) => void;
   saveIsoDoc: (key: string, doc: IsoDocState, note?: string) => void;
   removeIsoDoc: (key: string) => void;
@@ -1744,6 +1764,75 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     );
   },
 
+  setPlan: (plan) => {
+    const from = current().settings.plan ?? "Medium";
+    act(
+      (s) => ({ ...s, settings: { ...s.settings, plan } }),
+      ev("Settings", ALL, `changed the plan to ${plan} (A$${PLANS[plan].price} a month + GST)`, from, plan),
+    );
+  },
+  upgradePlan: (p) => {
+    const charge = p.total >= MIN_CHARGE;
+    act(
+      (s) => {
+        const invoices = s.settings.invoices ?? SEED_INVOICES;
+        const invoice = charge
+          ? makeInvoice(
+              nextInvoiceId(invoices, new Date().getFullYear()),
+              todayISO(),
+              `Plan change, ${p.from} to ${p.to}`,
+              prorationLines(p),
+            )
+          : null;
+        const next = { ...s.settings, plan: p.to, invoices: invoice ? [invoice, ...invoices] : invoices };
+        delete next.pendingPlan;
+        return { ...s, settings: next };
+      },
+      ev(
+        "Settings",
+        ALL,
+        charge
+          ? `upgraded to ${p.to} and paid A$${p.total.toFixed(2)} for the rest of the month`
+          : `upgraded to ${p.to}`,
+        p.from,
+        p.to,
+      ),
+    );
+  },
+  scheduleDowngrade: (plan, on) =>
+    act(
+      (s) => ({ ...s, settings: { ...s.settings, pendingPlan: { plan, on } } }),
+      ev("Settings", ALL, `booked a move to ${plan} from ${on}`, current().settings.plan ?? "", `${plan} from ${on}`),
+    ),
+  cancelPlanChange: () => {
+    const pending = current().settings.pendingPlan;
+    if (!pending) return;
+    act(
+      (s) => {
+        const next = { ...s.settings };
+        delete next.pendingPlan;
+        return { ...s, settings: next };
+      },
+      ev("Settings", ALL, `cancelled the move to ${pending.plan}`, pending.plan, current().settings.plan ?? ""),
+    );
+  },
+  applyDuePlanChange: (today) => {
+    const pending = current().settings.pendingPlan;
+    if (!pending || pending.on > today) return;
+    act(
+      (s) => {
+        const next = { ...s.settings, plan: pending.plan };
+        delete next.pendingPlan;
+        return { ...s, settings: next };
+      },
+      ev("Settings", ALL, `moved to ${pending.plan} at the start of the billing period`, current().settings.plan ?? "", pending.plan),
+    );
+  },
+  updateCard: (card) =>
+    act(
+      (s) => ({ ...s, settings: { ...s.settings, card } }),
+      ev("Settings", ALL, `updated the card on file to ${card.brand} ending ${card.last4}`, "", ""),
+    ),
   setIsoProfile: (patch) =>
     update((s) => ({
       ...s,
@@ -2089,9 +2178,11 @@ export function startWorkspace(input: {
           email: input.email,
         },
         account: "builder",
-        plan: input.plan,
+        plan: input.plan as BuilderPlan | undefined,
         trialEnds: input.trialEnds,
         card: input.card,
+        invoices: [],
+        pendingPlan: undefined,
       },
     };
   });
@@ -2126,6 +2217,11 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     () => false,
   );
   const state = saved ?? SEED;
+
+  // A downgrade booked for the next billing date takes effect once that date arrives.
+  useEffect(() => {
+    if (ready) actions.applyDuePlanChange(todayISO());
+  }, [ready]);
 
   const value = useMemo<Store>(
     () => ({ ...state, ready, ...actions }),
