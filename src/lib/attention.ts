@@ -14,6 +14,7 @@ import {
   type Plant,
   type Visitor,
   type Incident,
+  type Invite,
   type Risk,
   type Subcontractor,
   type Swms,
@@ -39,7 +40,8 @@ export type Attention = {
     | "visitor"
     | "defect"
     | "rfi"
-    | "inspection";
+    | "inspection"
+    | "invite";
   title: string;
   where: string;
   due: string;
@@ -62,6 +64,7 @@ type Input = {
   workers: Worker[];
   subs: Subcontractor[];
   swms: Swms[];
+  invites: Invite[];
   actions: Action[];
   risks: Risk[];
   incidents: Incident[];
@@ -447,6 +450,37 @@ export function attentionFor(i: Input): Attention[] {
       who: ini(sc.kind),
       projectId: sc.projectId,
     });
+  }
+
+  for (const v of i.invites) {
+    const sub = i.subs.find((x) => x.id === v.subId)?.name ?? "A subcontractor";
+    const age = -daysUntil(v.date);
+    if (v.status === "Declined")
+      out.push({
+        id: `inv-${v.id}`,
+        kind: "invite",
+        title: `${sub} declined ${i.projectName(v.projectId)}`,
+        where: "Invitation declined. Find another subcontractor or ask why",
+        due: "Needs a decision",
+        href: "/dashboard/subcontractors",
+        tone: "owed",
+        rank: -100,
+        who: ini(sub),
+        projectId: v.projectId,
+      });
+    else if (v.status === "Pending" && age >= 3)
+      out.push({
+        id: `inv-${v.id}`,
+        kind: "invite",
+        title: `${sub} has not replied about ${i.projectName(v.projectId)}`,
+        where: "Invitation waiting",
+        due: `Sent ${age} days ago`,
+        href: "/dashboard/subcontractors",
+        tone: "neutral",
+        rank: 5,
+        who: ini(sub),
+        projectId: v.projectId,
+      });
   }
 
   return out.sort((a, b) => a.rank - b.rank);

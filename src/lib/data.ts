@@ -88,6 +88,10 @@ export type Subcontractor = {
   phone: string;
   projects: string[];
   approved: boolean;
+  /** the email the subcontractor signs up with, to join the builder that added them */
+  email?: string;
+  /** true once the subcontractor has an account */
+  claimed?: boolean;
   docs: SubDoc[];
   /** prequalification checks to pass before approval */
   prequal?: { id: string; text: string; done: boolean }[];
@@ -687,7 +691,7 @@ export const seedProjects: Project[] = [
   },
 ];
 
-export const seedSubcontractors: Subcontractor[] = [
+const baseSubs: Subcontractor[] = [
   {
     id: "s-apex",
     name: "Apex Scaffolding",
@@ -744,6 +748,12 @@ export const seedSubcontractors: Subcontractor[] = [
     ],
   },
 ];
+
+export const seedSubcontractors: Subcontractor[] = baseSubs.map((x) => ({
+  ...x,
+  claimed: true,
+  email: `${x.contact.split(" ")[0].toLowerCase()}@${x.name.toLowerCase().replace(/[^a-z]/g, "")}.com.au`,
+}));
 
 export const seedWorkers: Worker[] = [
   {

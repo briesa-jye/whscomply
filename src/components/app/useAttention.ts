@@ -14,6 +14,9 @@ export function useAttention(): Attention[] {
       workers: s.workersIn,
       subs: s.subsIn,
       swms: s.swmsIn,
+      invites: s.all
+        ? s.invites
+        : s.invites.filter((i) => i.projectId === s.scopeId),
       actions: s.actionsIn,
       risks: s.risksIn,
       incidents: s.incidentsIn,

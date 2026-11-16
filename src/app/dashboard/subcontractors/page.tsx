@@ -70,7 +70,7 @@ export default function SubsPage() {
                       {x.name}
                     </h2>
                     <p className="truncate text-xs text-ink-soft">
-                      {x.trade} · {x.contact} · {x.phone || "no phone"} · {crew}{" "}
+                      {x.trade} · {x.contact} · {x.email || x.phone || "no contact"} · {crew}{" "}
                       worker{crew === 1 ? "" : "s"}
                     </p>
                   </div>
@@ -187,6 +187,15 @@ export default function SubsPage() {
                         ))}
                     </select>
                   </label>
+                  {!x.claimed && <Pill>Not signed up yet</Pill>}
+                  {all.invites
+                    .filter((i) => i.subId === x.id && i.status === "Declined")
+                    .map((i) => (
+                      <Pill key={i.id} tone="owed">
+                        Declined{" "}
+                        {all.projects.find((pr) => pr.id === i.projectId)?.name}
+                      </Pill>
+                    ))}
                   {all.invites
                     .filter((i) => i.subId === x.id && i.status === "Pending")
                     .map((i) => (

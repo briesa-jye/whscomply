@@ -32,7 +32,9 @@ export default function PortalReport() {
       date: todayISO(),
       time: nowLocal().slice(11),
       location: g("location"),
-      reporter: p.sub?.contact || p.sub?.name || "Subcontractor",
+      reporter: p.sub
+        ? `${p.sub.contact || "Site contact"}, ${p.sub.name}`
+        : "Subcontractor",
       people: g("people"),
       description: g("description"),
       severity: g("severity") as RiskLevel,

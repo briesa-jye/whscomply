@@ -31,8 +31,7 @@ export function usePortal() {
     const mySwms = swms.filter(
       (x) =>
         ids.has(x.projectId) &&
-        x.status === "Active" &&
-        x.required.some((w) => crewIds.has(w)),
+        x.status === "Active",
     );
     /** crew still to sign: [swms, worker] pairs */
     const unsigned = mySwms.flatMap((x) =>
@@ -47,7 +46,9 @@ export function usePortal() {
       .filter((n) => n.projectId === "all" || ids.has(n.projectId))
       .sort((a, b) => Number(b.pinned) - Number(a.pinned));
     const myIncidents = incidents.filter(
-      (i) => ids.has(i.projectId) && names.has(i.reporter),
+      (i) =>
+        ids.has(i.projectId) &&
+        (names.has(i.reporter) || (!!sub && i.reporter.includes(sub.name))),
     );
     const docs = sub?.docs ?? [];
     const docsDue = docs.filter((d) => {

@@ -80,7 +80,7 @@ import {
 import { clearFiles, type Attachment } from "@/lib/files";
 import { todayISO } from "@/lib/format";
 
-const KEY = "whscomply-demo-v6";
+const KEY = "whscomply-demo-v7";
 
 export const ALL = "all";
 
@@ -252,12 +252,25 @@ function ev(
   from: string,
   to: string,
 ): AuditEvent {
+  // Changes made from the subcontractor portal are logged under the subcontractor, not the site manager.
+  const st = current();
+  const sub =
+    st.settings.account === "subcontractor"
+      ? st.subs.find((x) => x.id === st.settings.subId)
+      : undefined;
+  const person = sub ? sub.contact || sub.name : "";
   return {
     id: uid(),
     day: "Today",
     t: nowTime(),
-    who: me.initials,
-    name: me.name,
+    who: sub
+      ? person
+          .split(/\s+/)
+          .slice(0, 2)
+          .map((w) => w[0]?.toUpperCase())
+          .join("")
+      : me.initials,
+    name: sub ? `${person} (${sub.name})` : me.name,
     act,
     from,
     to,
@@ -290,7 +303,7 @@ export type NewWorker = Pick<Worker, "name" | "role" | "company" | "phone"> & {
 export type NewSub = Pick<
   Subcontractor,
   "name" | "trade" | "contact" | "phone"
-> & { projects: string[] };
+> & { projects: string[]; email?: string };
 export type NewSwms = {
   title: string;
   projectId: string;
@@ -655,10 +668,29 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     act(
       (s) => ({
         ...s,
+        // The subcontractor joins a project by accepting an invitation, not by being added to it.
+        invites: [
+          ...i.projects.map((projectId) => ({
+            id: `inv-${uid()}`,
+            subId: id,
+            projectId,
+            from: s.settings.company.name,
+            by: me.name,
+            date: todayISO(),
+            status: "Pending" as const,
+          })),
+          ...s.invites,
+        ],
         subs: [
           ...s.subs,
           {
-            ...i,
+            name: i.name,
+            trade: i.trade,
+            contact: i.contact,
+            phone: i.phone,
+            email: i.email?.trim() || undefined,
+            claimed: false,
+            projects: [],
             id,
             approved: false,
             docs: [],
@@ -673,7 +705,9 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
       ev(
         "People",
         i.projects[0] ?? ALL,
-        `added the subcontractor ${i.name}`,
+        i.projects.length
+          ? `added the subcontractor ${i.name} and invited them to ${i.projects.length} project${i.projects.length === 1 ? "" : "s"}`
+          : `added the subcontractor ${i.name}`,
         "No record",
         "Pending",
       ),
@@ -1615,16 +1649,15 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     );
   },
 
-  respondInvite: (id, accept) =>
-    update((s) => {
-      const inv = s.invites.find((i) => i.id === id);
-      if (!inv) return s;
-      return {
+  respondInvite: (id, accept) => {
+    const s0 = current();
+    const inv = s0.invites.find((i) => i.id === id);
+    if (!inv) return;
+    act(
+      (s) => ({
         ...s,
         invites: s.invites.map((i) =>
-          i.id === id
-            ? { ...i, status: accept ? "Accepted" : "Declined" }
-            : i,
+          i.id === id ? { ...i, status: accept ? "Accepted" : "Declined" } : i,
         ),
         subs: accept
           ? patchIn(s.subs, inv.subId, (x) =>
@@ -1633,33 +1666,51 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
                 : { ...x, projects: [...x.projects, inv.projectId] },
             )
           : s.subs,
-      };
-    }),
-  inviteSub: (subId, projectId) =>
-    update((s) =>
-      s.invites.some(
+      }),
+      ev(
+        "People",
+        inv.projectId,
+        `${accept ? "accepted" : "declined"} the invitation to ${projectName(s0, inv.projectId)}`,
+        "Invited",
+        accept ? "On the project" : "Declined",
+      ),
+    );
+  },
+  inviteSub: (subId, projectId) => {
+    const s0 = current();
+    if (
+      s0.invites.some(
         (i) =>
-          i.subId === subId &&
-          i.projectId === projectId &&
-          i.status === "Pending",
+          i.subId === subId && i.projectId === projectId && i.status === "Pending",
       )
-        ? s
-        : {
-            ...s,
-            invites: [
-              {
-                id: `inv-${uid()}`,
-                subId,
-                projectId,
-                from: s.settings.company.name,
-                by: me.name,
-                date: todayISO(),
-                status: "Pending",
-              },
-              ...s.invites,
-            ],
+    )
+      return;
+    const who = s0.subs.find((x) => x.id === subId)?.name ?? "A subcontractor";
+    act(
+      (s) => ({
+        ...s,
+        invites: [
+          {
+            id: `inv-${uid()}`,
+            subId,
+            projectId,
+            from: s.settings.company.name,
+            by: me.name,
+            date: todayISO(),
+            status: "Pending",
           },
-    ),
+          ...s.invites,
+        ],
+      }),
+      ev(
+        "People",
+        projectId,
+        `invited ${who} to ${projectName(s0, projectId)}`,
+        "Not on the project",
+        "Invited",
+      ),
+    );
+  },
   updateSub: (id, patch) =>
     update((s) => ({ ...s, subs: patchIn(s.subs, id, (x) => ({ ...x, ...patch })) })),
 
@@ -1669,7 +1720,7 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
   },
 };
 
-/** Called when someone signs up: builders put their company into the workspace, subcontractors get a record of their own. */
+/** Called when someone signs up: builders put their company into the workspace, subcontractors join the builder that added them or get a record of their own. */
 export function startWorkspace(input: {
   company: string;
   abn: string;
@@ -1682,6 +1733,33 @@ export function startWorkspace(input: {
 }) {
   update((s) => {
     if (input.account === "subcontractor") {
+      const email = input.email.trim().toLowerCase();
+      // A builder may already have added this business with this email and invited it to projects.
+      const existing = s.subs.find(
+        (x) => !x.claimed && x.email?.toLowerCase() === email,
+      );
+      if (existing) {
+        const joined = {
+          ...ev(
+            "People",
+            ALL,
+            `${existing.name} signed up and can now accept their invitations`,
+            "Not signed up",
+            "Joined",
+          ),
+          name: `${input.contact} (${existing.name})`,
+        };
+        return {
+          ...s,
+          subs: patchIn(s.subs, existing.id, (x) => ({
+            ...x,
+            claimed: true,
+            contact: input.contact || x.contact,
+          })),
+          audit: [joined, ...s.audit],
+          settings: { ...s.settings, account: "subcontractor", subId: existing.id },
+        };
+      }
       const id = `s-${uid()}`;
       const live = s.projects.filter((p) => p.status === "Live").slice(0, 2);
       return {
@@ -1694,12 +1772,14 @@ export function startWorkspace(input: {
             trade: "",
             contact: input.contact,
             phone: "",
+            email,
+            claimed: true,
             projects: [],
             approved: false,
             docs: [],
           },
         ],
-        // A new subcontractor starts with invitations from the builder, as they would in real life.
+        // Nobody has invited this business yet. The demo gives it two invitations so the portal has something to show.
         invites: [
           ...live.map((p) => ({
             id: `inv-${uid()}`,
@@ -1734,16 +1814,23 @@ export function startWorkspace(input: {
   });
 }
 
-/** Sign in as a builder or a subcontractor. The demo shows the Apex Scaffolding portal unless someone signed up as a subcontractor. */
-export function signInAs(account: "builder" | "subcontractor") {
-  update((s) => ({
-    ...s,
-    settings: {
-      ...s.settings,
-      account,
-      subId: s.settings.subId ?? "s-apex",
-    },
-  }));
+/** Sign in as a builder or a subcontractor. A subcontractor email that a builder added opens that business. Otherwise the demo shows Apex Scaffolding. */
+export function signInAs(account: "builder" | "subcontractor", email = "") {
+  update((s) => {
+    const m =
+      account === "subcontractor" && email
+        ? s.subs.find((x) => x.email?.toLowerCase() === email.trim().toLowerCase())
+        : undefined;
+    return {
+      ...s,
+      subs: m ? patchIn(s.subs, m.id, (x) => ({ ...x, claimed: true })) : s.subs,
+      settings: {
+        ...s.settings,
+        account,
+        subId: m?.id ?? s.settings.subId ?? "s-apex",
+      },
+    };
+  });
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -1822,7 +1909,18 @@ export function useScope() {
         ? s.audit
         : s.audit.filter((x) => x.projectId === id || x.projectId === ALL),
       workersIn: inA(s.workers),
-      subsIn: inA(s.subs),
+      subsIn: all
+        ? s.subs
+        : s.subs.filter(
+            (x) =>
+              x.projects.includes(id) ||
+              s.invites.some(
+                (i) =>
+                  i.subId === x.id &&
+                  i.projectId === id &&
+                  i.status === "Pending",
+              ),
+          ),
     };
   }, [s]);
 }

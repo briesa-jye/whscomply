@@ -1190,7 +1190,12 @@ export function ActionForm({
   };
   onSave?: (a: NewAction) => void;
 }) {
-  const { addAction } = useScope();
+  const { addAction, members, workers, subs } = useScope();
+  const owners = [
+    ...members.map((m) => m.name),
+    ...workers.map((w) => w.name),
+    ...subs.map((x) => x.contact).filter(Boolean),
+  ];
   return (
     <Shell title="New corrective action" onClose={onClose}>
       <form
@@ -1216,9 +1221,15 @@ export function ActionForm({
           <input
             name="owner"
             required
+            list="action-owners"
             defaultValue="Sam Kowalski"
             className={field}
           />
+          <datalist id="action-owners">
+            {[...new Set(owners)].map((n) => (
+              <option key={n} value={n} />
+            ))}
+          </datalist>
         </Field>
         <Field label="Due">
           <input
@@ -1437,7 +1448,7 @@ export function SubForm({ onClose }: { onClose: () => void }) {
   return (
     <Shell
       title="Add a subcontractor"
-      sub="They stay pending until their paperwork is checked and you approve them"
+      sub="They get an invitation to each project. They join when they sign up with this email and accept"
       onClose={onClose}
     >
       <form
@@ -1448,6 +1459,7 @@ export function SubForm({ onClose }: { onClose: () => void }) {
             trade: g("trade"),
             contact: g("contact"),
             phone: g("phone"),
+            email: g("email"),
             projects: projects
               .filter((p) => g(`p-${p.id}`) === "on")
               .map((p) => p.id),
@@ -1468,8 +1480,11 @@ export function SubForm({ onClose }: { onClose: () => void }) {
         <Field label="Phone" hint="optional">
           <input name="phone" className={field} />
         </Field>
+        <Field label="Email" hint="they sign up with this">
+          <input name="email" type="email" required className={field} />
+        </Field>
         <fieldset className="sm:col-span-2">
-          <legend className="text-sm font-medium">Working on</legend>
+          <legend className="text-sm font-medium">Invite to</legend>
           <div className="mt-2 flex flex-wrap gap-2">
             {projects.map((p) => (
               <label

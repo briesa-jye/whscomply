@@ -34,7 +34,7 @@ export function SignInForm() {
     setError("");
     setBusy(true);
     // Demo workspace: there is no account check yet, so any details open the dashboard.
-    signInAs(account);
+    signInAs(account, email);
     router.push(account === "subcontractor" ? "/portal" : "/dashboard");
   }
 
