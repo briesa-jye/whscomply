@@ -70,7 +70,10 @@ The button at the top left of every page shows **All projects** or the project y
 - Choose **All projects** to see the whole business.
 
 ## Adding a project
-Go to **Projects** and choose **New project**. Give it a name, address, client, stage and site manager. You can then assign workers and subcontractors to it.`,
+Go to **Projects** and choose **New project**. Give it a name, address, client, stage and site manager. You can then invite subcontractors to it.
+
+## Closing a project
+When a project is finished, choose **Close project** on its card. You see anything still open (incidents, actions, defects, permits) before you confirm. Closing signs everyone off, marks the subcontractors as finished on it, cancels invitations nobody answered and moves the project to **Archived**. Nothing is deleted: SWMS, inspections, incidents, signatures and the audit log stay. Choose **Reopen** if you need it back.`,
   },
   {
     id: "search",
@@ -403,7 +406,10 @@ On **Projects**, each project has a gate list. **Sign on** is available once a w
     summary: "Check their paperwork before they start, and keep it current.",
     open: { href: "/dashboard/subcontractors", label: "Open subcontractors" },
     body: `## Add a subcontractor
-Choose **Add subcontractor** and say which projects they work on. They start as **Pending**.
+Choose **Add subcontractor**, enter their email and choose the projects to invite them to. They join when they sign up with that email and accept. They start as **Pending**.
+
+## When their work is done
+A subcontractor can press **Mark my work complete** on a project. You get an alert, and you confirm it with the tick on their chip on this page. Their crew come off the project, and the job is kept as finished. You can also finish or remove a subcontractor yourself at any time.
 
 ## Prequalification
 Open the **Prequalification** list and tick each check as you confirm it. **Approve for site** is only available when every check is ticked and no document has lapsed.

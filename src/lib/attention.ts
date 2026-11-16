@@ -468,6 +468,19 @@ export function attentionFor(i: Input): Attention[] {
         who: ini(sub),
         projectId: v.projectId,
       });
+    else if (v.status === "Accepted" && v.finishRequested)
+      out.push({
+        id: `fin-${v.id}`,
+        kind: "invite",
+        title: `${sub} says its work on ${i.projectName(v.projectId)} is complete`,
+        where: "Confirm it, or ask them to finish",
+        due: "Waiting for you",
+        href: "/dashboard/subcontractors",
+        tone: "owed",
+        rank: -60,
+        who: ini(sub),
+        projectId: v.projectId,
+      });
     else if (v.status === "Pending" && age >= 3)
       out.push({
         id: `inv-${v.id}`,

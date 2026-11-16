@@ -1,6 +1,7 @@
 "use client";
 
 import { Invites } from "@/components/portal/Invites";
+import { btnLight } from "@/components/app/ui";
 import { usePortal } from "@/components/portal/usePortal";
 import { Card, CardHead, EmptyState, PageHeading, Pill } from "@/components/app/ui";
 import { fmtDate } from "@/lib/format";
@@ -8,6 +9,7 @@ import { fmtDate } from "@/lib/format";
 export default function PortalProjects() {
   const p = usePortal();
   const past = p.myInvites.filter((i) => i.status === "Declined");
+  const finished = p.myInvites.filter((i) => i.status === "Finished");
   const removed = p.myInvites.filter(
     (i) =>
       i.status === "Removed" && !p.myProjects.some((x) => x.id === i.projectId),
@@ -27,6 +29,10 @@ export default function PortalProjects() {
             const onSite = crew.filter((w) => pr.onSite.includes(w.id));
             const inducted = crew.filter((w) => w.inducted.includes(pr.id));
             const swms = p.mySwms.filter((x) => x.projectId === pr.id);
+            const asked = p.myInvites.find(
+              (i) =>
+                i.projectId === pr.id && i.status === "Accepted" && i.finishRequested,
+            );
             return (
               <Card key={pr.id}>
                 <CardHead
@@ -62,6 +68,31 @@ export default function PortalProjects() {
                     <dd className="font-semibold">{fmtDate(pr.start)}</dd>
                   </div>
                 </dl>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
+                  {asked ? (
+                    <Pill tone="owed">
+                      Completion sent {fmtDate(asked.finishRequested!)}. Waiting for the builder
+                    </Pill>
+                  ) : (
+                    <>
+                      <span className="text-xs text-ink-soft">Finished your work here?</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Tell the builder your work on ${pr.name} is complete? They confirm it, and your crew come off the project. Everything you signed stays on record.`,
+                            )
+                          )
+                            p.requestFinish(p.subId, pr.id);
+                        }}
+                        className={`${btnLight} !px-3 !py-1.5 text-xs`}
+                      >
+                        Mark my work complete
+                      </button>
+                    </>
+                  )}
+                </div>
                 <div className="space-y-1.5 border-t border-line bg-tint/50 px-5 py-4 text-xs text-ink-soft">
                   <p>
                     <span className="font-semibold text-ink">Emergency contact:</span>{" "}
@@ -89,6 +120,26 @@ export default function PortalProjects() {
             />
           </Card>
         )
+      )}
+
+      {finished.length > 0 && (
+        <Card className="mt-6">
+          <CardHead
+            title="Completed jobs"
+            sub="Work you finished. Stored for your records, and the builder keeps everything you signed."
+          />
+          <ul className="divide-y divide-line">
+            {finished.map((i) => (
+              <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 text-sm">
+                <span className="font-semibold">
+                  {p.projects.find((x) => x.id === i.projectId)?.name}
+                  <span className="font-normal text-ink-soft"> · {i.from}</span>
+                </span>
+                <Pill tone="ok">Completed{i.finishedAt ? ` ${fmtDate(i.finishedAt)}` : ""}</Pill>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
 
       {removed.length > 0 && (

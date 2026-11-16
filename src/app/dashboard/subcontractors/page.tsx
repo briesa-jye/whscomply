@@ -179,7 +179,7 @@ export default function SubsPage() {
                     >
                       <option value="">Choose…</option>
                       {all.projects
-                        .filter((pr) => !x.projects.includes(pr.id))
+                        .filter((pr) => !x.projects.includes(pr.id) && !pr.closedAt)
                         .map((pr) => (
                           <option key={pr.id} value={pr.id}>
                             {pr.name}
@@ -199,17 +199,42 @@ export default function SubsPage() {
                 </div>
                 {(x.projects.length > 0 ||
                   all.invites.some(
-                    (i) => i.subId === x.id && i.status === "Pending",
+                    (i) =>
+                      i.subId === x.id &&
+                      (i.status === "Pending" || i.status === "Finished"),
                   )) && (
                   <ul className="flex flex-wrap gap-2 border-t border-line px-5 py-3 text-xs">
                     {x.projects.map((pid) => {
                       const name = all.projects.find((pr) => pr.id === pid)?.name;
+                      const asked = all.invites.find(
+                        (i) =>
+                          i.subId === x.id &&
+                          i.projectId === pid &&
+                          i.status === "Accepted" &&
+                          i.finishRequested,
+                      );
                       return (
                         <li
                           key={pid}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-tint py-1 pl-3 pr-1.5 font-semibold"
+                          className={`inline-flex items-center gap-1.5 rounded-full py-1 pl-3 pr-1.5 font-semibold ${asked ? "bg-accent/25" : "bg-tint"}`}
                         >
-                          On {name}
+                          {asked ? `${name}: says work is complete` : `On ${name}`}
+                          <button
+                            type="button"
+                            aria-label={`Mark ${x.name} finished on ${name}`}
+                            title="Work is complete. Release them from this project"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Mark ${x.name} as finished on ${name}? Their crew come off the project and are signed off site. Everything they signed stays on record.`,
+                                )
+                              )
+                                all.finishSubOnProject(x.id, pid);
+                            }}
+                            className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-line"
+                          >
+                            <Icon name="check" className="h-3 w-3" />
+                          </button>
                           <button
                             type="button"
                             aria-label={`Remove ${x.name} from ${name}`}
@@ -229,6 +254,17 @@ export default function SubsPage() {
                         </li>
                       );
                     })}
+                    {all.invites
+                      .filter((i) => i.subId === x.id && i.status === "Finished")
+                      .map((i) => (
+                        <li
+                          key={i.id}
+                          className="inline-flex items-center rounded-full border border-line px-3 py-1 text-ink-soft"
+                        >
+                          Finished {all.projects.find((pr) => pr.id === i.projectId)?.name}
+                          {i.finishedAt && ` · ${fmtDate(i.finishedAt)}`}
+                        </li>
+                      ))}
                     {all.invites
                       .filter((i) => i.subId === x.id && i.status === "Pending")
                       .map((i) => {

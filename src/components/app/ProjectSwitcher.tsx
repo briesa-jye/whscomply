@@ -102,7 +102,7 @@ export function ProjectSwitcher() {
                 )}
               </button>
             </li>
-            {projects.map((p) => (
+            {[...projects.filter((p) => !p.closedAt), ...projects.filter((p) => p.closedAt)].map((p) => (
               <li key={p.id}>
                 <button
                   type="button"
@@ -122,7 +122,7 @@ export function ProjectSwitcher() {
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[p.status]}`}
                       />
-                      {p.status} · {p.onSite.length} on site
+                      {p.closedAt ? "Archived" : `${p.status} · ${p.onSite.length} on site`}
                     </span>
                   </span>
                   {projectId === p.id && (

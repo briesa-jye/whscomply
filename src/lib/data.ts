@@ -52,6 +52,9 @@ export type Project = {
   locations: string[];
   /** what every worker is shown and acknowledges at the site induction */
   inductionTopics: string[];
+  /** set when the project is closed and stored. Closed projects are read-only history. */
+  closedAt?: string;
+  closeNote?: string;
 };
 
 export type Ticket = {
@@ -106,7 +109,16 @@ export type Invite = {
   from: string;
   by: string;
   date: string;
-  status: "Pending" | "Accepted" | "Declined" | "Cancelled" | "Removed";
+  status:
+    | "Pending"
+    | "Accepted"
+    | "Declined"
+    | "Cancelled"
+    | "Removed"
+    | "Finished";
+  /** the subcontractor says its work on the project is done, waiting for the builder */
+  finishRequested?: string;
+  finishedAt?: string;
 };
 
 export type RiskLevel = "Low" | "Medium" | "High" | "Extreme";

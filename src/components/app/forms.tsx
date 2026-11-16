@@ -71,7 +71,8 @@ export function Actions({
 
 /** A project picker that starts on the project chosen in the top bar. */
 export function ProjectField({ name = "projectId" }: { name?: string }) {
-  const { projects, scopeId, all } = useScope();
+  const { projects: every, scopeId, all } = useScope();
+  const projects = every.filter((p) => !p.closedAt);
   return (
     <Field label="Project">
       <select
@@ -1251,7 +1252,8 @@ export function ActionForm({
 /* ---------- people ---------- */
 
 export function WorkerForm({ onClose }: { onClose: () => void }) {
-  const { addWorker, subs, scopeId, all, projects } = useScope();
+  const { addWorker, subs, scopeId, all, projects: every } = useScope();
+  const projects = every.filter((p) => !p.closedAt);
   return (
     <Shell
       title="Add a worker"
@@ -1444,7 +1446,8 @@ export function TicketForm({
 }
 
 export function SubForm({ onClose }: { onClose: () => void }) {
-  const { addSub, scopeId, all, projects } = useScope();
+  const { addSub, scopeId, all, projects: every } = useScope();
+  const projects = every.filter((p) => !p.closedAt);
   return (
     <Shell
       title="Add a subcontractor"

@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+import { CloseProjectModal } from "@/components/app/CloseProjectModal";
 import { Icon } from "@/components/Icons";
 import { ALL, useScope } from "@/components/app/DemoStore";
 import { ProjectForm } from "@/components/app/forms";
@@ -19,6 +21,9 @@ import { fmtDate } from "@/lib/format";
 export default function ProjectsPage() {
   const s = useScope();
   const [adding, setAdding] = useState(false);
+  const [closing, setClosing] = useState<string | null>(null);
+  const active = s.projects.filter((p) => !p.closedAt);
+  const archived = s.projects.filter((p) => p.closedAt);
 
   return (
     <>
@@ -36,16 +41,16 @@ export default function ProjectsPage() {
         }
       />
 
-      {s.projects.length === 0 ? (
+      {active.length === 0 ? (
         <Card>
           <EmptyState
-            title="No projects yet."
+            title={archived.length ? "No active projects." : "No projects yet."}
             body="Create one to start recording SWMS, inductions and inspections."
           />
         </Card>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
-          {s.projects.map((p) => {
+          {active.map((p) => {
             const crew = s.workers.filter((w) => w.projects.includes(p.id));
             const swms = s.swms.filter(
               (x) => x.projectId === p.id && x.status === "Active",
@@ -238,6 +243,13 @@ export default function ProjectsPage() {
                       ? "Showing this project. Show all"
                       : "Switch to this project"}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setClosing(p.id)}
+                    className="text-xs font-semibold underline"
+                  >
+                    Close project
+                  </button>
                   <span className="text-xs text-ink-soft">
                     {daysUntil(p.start) > 0
                       ? `Starts in ${daysUntil(p.start)} days`
@@ -250,6 +262,75 @@ export default function ProjectsPage() {
         </div>
       )}
 
+      {archived.length > 0 && (
+        <section className="mt-10">
+          <h2 className="font-display text-xl font-extrabold tracking-tight">Archived projects</h2>
+          <p className="mb-4 text-sm text-ink-soft">
+            Finished and stored. Read-only history: every record stays, and the audit log is kept.
+          </p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {archived.map((p) => {
+              const swms = s.swms.filter((x) => x.projectId === p.id).length;
+              const inc = s.incidents.filter((x) => x.projectId === p.id).length;
+              const insp = s.inspections.filter((x) => x.projectId === p.id).length;
+              const subsDone = s.invites.filter((i) => i.projectId === p.id && i.status === "Finished");
+              return (
+                <Card key={p.id}>
+                  <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
+                    <div className="min-w-0">
+                      <h3 className="truncate font-display text-lg font-extrabold tracking-tight">{p.name}</h3>
+                      <p className="text-xs text-ink-soft">
+                        {p.client} · {fmtDate(p.start)} to {fmtDate(p.closedAt!)}
+                      </p>
+                    </div>
+                    <Pill>Archived</Pill>
+                  </div>
+                  <dl className="grid grid-cols-4 divide-x divide-line border-b border-line text-center">
+                    {[
+                      ["SWMS", swms],
+                      ["Inspections", insp],
+                      ["Incidents", inc],
+                      ["Subcontractors", subsDone.length],
+                    ].map(([k, v]) => (
+                      <div key={k} className="px-1 py-3">
+                        <dt className="text-[11px] text-ink-soft">{k}</dt>
+                        <dd className="font-display text-xl font-extrabold tabular-nums">{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {p.closeNote && <p className="px-5 pt-3 text-sm text-ink-soft">{p.closeNote}</p>}
+                  {subsDone.length > 0 && (
+                    <p className="px-5 pt-3 text-xs text-ink-soft">
+                      Subcontractors: {subsDone.map((i) => s.subs.find((x) => x.id === i.subId)?.name).filter(Boolean).join(", ")}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between gap-3 px-5 py-4">
+                    <Link
+                      href="/dashboard/audit"
+                      onClick={() => s.setProject(p.id)}
+                      className="text-xs font-semibold underline"
+                    >
+                      View its records
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Reopen ${p.name}? It returns to your active projects. Subcontractors stay marked as finished and need inviting again.`))
+                          s.reopenProject(p.id);
+                      }}
+                      className={`${btnLight} !px-3 !py-1.5 text-xs`}
+                    >
+                      Reopen
+                    </button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {closing && <CloseProjectModal projectId={closing} onClose={() => setClosing(null)} />}
       {adding && <ProjectForm onClose={() => setAdding(false)} />}
     </>
   );

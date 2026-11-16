@@ -499,6 +499,13 @@ type Store = Saved & {
   cancelInvite: (id: string) => void;
   /** take a subcontractor off a project: the project leaves them, their crew leave the site, the records stay */
   removeSubFromProject: (subId: string, projectId: string) => void;
+  /** the subcontractor says its work on a project is done */
+  requestFinish: (subId: string, projectId: string) => void;
+  /** the builder confirms the subcontractor is done: crew come off the project and the work is kept as history */
+  finishSubOnProject: (subId: string, projectId: string) => void;
+  /** close a project and store it: everyone is signed off, subcontractors are finished, records stay */
+  closeProject: (id: string, note?: string) => void;
+  reopenProject: (id: string) => void;
   inviteSub: (subId: string, projectId: string) => void;
   updateSub: (
     id: string,
@@ -531,6 +538,58 @@ const patchIn = <T extends { id: string }>(
   id: string,
   fn: (t: T) => T,
 ) => list.map((t) => (t.id === id ? fn(t) : t));
+
+/** Takes a subcontractor off a project in state: their project, their crew and the gate. Records of what they signed stay. */
+function detachSub(
+  s: Saved,
+  subId: string,
+  projectId: string,
+  status: "Removed" | "Finished",
+): Saved {
+  const crew = new Set(
+    s.workers.filter((w) => w.company === subId).map((w) => w.id),
+  );
+  const stamp = status === "Finished" ? { finishedAt: todayISO() } : {};
+  const has = s.invites.some(
+    (i) =>
+      i.subId === subId && i.projectId === projectId && i.status === "Accepted",
+  );
+  return {
+    ...s,
+    subs: patchIn(s.subs, subId, (x) => ({
+      ...x,
+      projects: x.projects.filter((p) => p !== projectId),
+    })),
+    workers: s.workers.map((w) =>
+      crew.has(w.id)
+        ? { ...w, projects: w.projects.filter((p) => p !== projectId) }
+        : w,
+    ),
+    projects: patchIn(s.projects, projectId, (p) => ({
+      ...p,
+      onSite: p.onSite.filter((w) => !crew.has(w)),
+    })),
+    invites: has
+      ? s.invites.map((i) =>
+          i.subId === subId && i.projectId === projectId && i.status === "Accepted"
+            ? { ...i, status, ...stamp }
+            : i,
+        )
+      : [
+          {
+            id: `inv-${uid()}`,
+            subId,
+            projectId,
+            from: s.settings.company.name,
+            by: me.name,
+            date: todayISO(),
+            status,
+            ...stamp,
+          },
+          ...s.invites,
+        ],
+  };
+}
 
 const actions: Omit<Store, keyof Saved | "ready"> = {
   setProject: (id) => update((s) => ({ ...s, projectId: id })),
@@ -1786,52 +1845,8 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     const s0 = current();
     const sub = s0.subs.find((x) => x.id === subId);
     if (!sub) return;
-    const crew = new Set(
-      s0.workers.filter((w) => w.company === subId).map((w) => w.id),
-    );
     act(
-      (s) => ({
-        ...s,
-        subs: patchIn(s.subs, subId, (x) => ({
-          ...x,
-          projects: x.projects.filter((p) => p !== projectId),
-        })),
-        // Their crew leave the project and are signed off the site. Inductions and signed SWMS stay on record.
-        workers: s.workers.map((w) =>
-          crew.has(w.id)
-            ? { ...w, projects: w.projects.filter((p) => p !== projectId) }
-            : w,
-        ),
-        projects: patchIn(s.projects, projectId, (p) => ({
-          ...p,
-          onSite: p.onSite.filter((w) => !crew.has(w)),
-        })),
-        invites: s.invites.some(
-          (i) =>
-            i.subId === subId &&
-            i.projectId === projectId &&
-            i.status === "Accepted",
-        )
-          ? s.invites.map((i) =>
-              i.subId === subId &&
-              i.projectId === projectId &&
-              i.status === "Accepted"
-                ? { ...i, status: "Removed" }
-                : i,
-            )
-          : [
-              {
-                id: `inv-${uid()}`,
-                subId,
-                projectId,
-                from: s.settings.company.name,
-                by: me.name,
-                date: todayISO(),
-                status: "Removed" as const,
-              },
-              ...s.invites,
-            ],
-      }),
+      (s) => detachSub(s, subId, projectId, "Removed"),
       ev(
         "People",
         projectId,
@@ -1839,6 +1854,109 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
         "On the project",
         "Removed",
       ),
+    );
+  },
+  requestFinish: (subId, projectId) => {
+    const s0 = current();
+    const sub = s0.subs.find((x) => x.id === subId);
+    if (!sub) return;
+    act(
+      (s) => {
+        const has = s.invites.some(
+          (i) =>
+            i.subId === subId &&
+            i.projectId === projectId &&
+            i.status === "Accepted",
+        );
+        return {
+          ...s,
+          invites: has
+            ? s.invites.map((i) =>
+                i.subId === subId &&
+                i.projectId === projectId &&
+                i.status === "Accepted"
+                  ? { ...i, finishRequested: todayISO() }
+                  : i,
+              )
+            : [
+                {
+                  id: `inv-${uid()}`,
+                  subId,
+                  projectId,
+                  from: s.settings.company.name,
+                  by: me.name,
+                  date: todayISO(),
+                  status: "Accepted" as const,
+                  finishRequested: todayISO(),
+                },
+                ...s.invites,
+              ],
+        };
+      },
+      ev(
+        "People",
+        projectId,
+        `said its work on ${projectName(s0, projectId)} is complete`,
+        "On the project",
+        "Completion requested",
+      ),
+    );
+  },
+  finishSubOnProject: (subId, projectId) => {
+    const s0 = current();
+    const sub = s0.subs.find((x) => x.id === subId);
+    if (!sub) return;
+    act(
+      (s) => detachSub(s, subId, projectId, "Finished"),
+      ev(
+        "People",
+        projectId,
+        `confirmed ${sub.name} finished on ${projectName(s0, projectId)}`,
+        "On the project",
+        "Finished",
+      ),
+    );
+  },
+  closeProject: (id, note) => {
+    const s0 = current();
+    const name = projectName(s0, id);
+    act(
+      (s) => {
+        let n = s;
+        for (const x of s.subs.filter((y) => y.projects.includes(id)))
+          n = detachSub(n, x.id, id, "Finished");
+        return {
+          ...n,
+          invites: n.invites.map((i) =>
+            i.projectId === id && i.status === "Pending"
+              ? { ...i, status: "Cancelled" }
+              : i,
+          ),
+          projects: patchIn(n.projects, id, (p) => ({
+            ...p,
+            status: "Complete",
+            closedAt: todayISO(),
+            closeNote: note?.trim() || undefined,
+            onSite: [],
+          })),
+        };
+      },
+      ev("Projects", id, `closed and stored ${name}`, "Live", "Complete"),
+    );
+  },
+  reopenProject: (id) => {
+    const name = projectName(current(), id);
+    act(
+      (s) => ({
+        ...s,
+        projects: patchIn(s.projects, id, (p) => ({
+          ...p,
+          status: "Live",
+          closedAt: undefined,
+          closeNote: undefined,
+        })),
+      }),
+      ev("Projects", id, `reopened ${name}`, "Complete", "Live"),
     );
   },
   inviteSub: (subId, projectId) => {
