@@ -8,6 +8,10 @@ import { fmtDate } from "@/lib/format";
 export default function PortalProjects() {
   const p = usePortal();
   const past = p.myInvites.filter((i) => i.status === "Declined");
+  const removed = p.myInvites.filter(
+    (i) =>
+      i.status === "Removed" && !p.myProjects.some((x) => x.id === i.projectId),
+  );
   return (
     <>
       <PageHeading
@@ -85,6 +89,23 @@ export default function PortalProjects() {
             />
           </Card>
         )
+      )}
+
+      {removed.length > 0 && (
+        <Card className="mt-6">
+          <CardHead
+            title="No longer on"
+            sub="The builder has taken you off these projects. Your signed records stay with them."
+          />
+          <ul className="divide-y divide-line">
+            {removed.map((i) => (
+              <li key={i.id} className="px-5 py-3.5 text-sm font-semibold">
+                {p.projects.find((x) => x.id === i.projectId)?.name}
+                <span className="font-normal text-ink-soft"> · {i.from}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
 
       {past.length > 0 && (

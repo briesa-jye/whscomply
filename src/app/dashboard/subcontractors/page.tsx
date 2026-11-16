@@ -196,15 +196,65 @@ export default function SubsPage() {
                         {all.projects.find((pr) => pr.id === i.projectId)?.name}
                       </Pill>
                     ))}
-                  {all.invites
-                    .filter((i) => i.subId === x.id && i.status === "Pending")
-                    .map((i) => (
-                      <Pill key={i.id}>
-                        Invited to{" "}
-                        {all.projects.find((pr) => pr.id === i.projectId)?.name}
-                      </Pill>
-                    ))}
                 </div>
+                {(x.projects.length > 0 ||
+                  all.invites.some(
+                    (i) => i.subId === x.id && i.status === "Pending",
+                  )) && (
+                  <ul className="flex flex-wrap gap-2 border-t border-line px-5 py-3 text-xs">
+                    {x.projects.map((pid) => {
+                      const name = all.projects.find((pr) => pr.id === pid)?.name;
+                      return (
+                        <li
+                          key={pid}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-tint py-1 pl-3 pr-1.5 font-semibold"
+                        >
+                          On {name}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${x.name} from ${name}`}
+                            title="Remove from this project"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Remove ${x.name} from ${name}? Their crew are taken off the project and signed off site. Signed SWMS and inductions stay on record.`,
+                                )
+                              )
+                                all.removeSubFromProject(x.id, pid);
+                            }}
+                            className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-line"
+                          >
+                            <Icon name="close" className="h-3 w-3" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                    {all.invites
+                      .filter((i) => i.subId === x.id && i.status === "Pending")
+                      .map((i) => {
+                        const name = all.projects.find(
+                          (pr) => pr.id === i.projectId,
+                        )?.name;
+                        return (
+                          <li
+                            key={i.id}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-ink-soft py-1 pl-3 pr-1.5 font-semibold text-ink-soft"
+                          >
+                            Invited to {name}
+                            <button
+                              type="button"
+                              aria-label={`Cancel the invitation to ${name}`}
+                              title="Cancel invitation"
+                              onClick={() => all.cancelInvite(i.id)}
+                              className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-tint"
+                            >
+                              <Icon name="close" className="h-3 w-3" />
+                            </button>
+                          </li>
+                        );
+                      })}
+                  </ul>
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-bg px-5 py-3">
                   <button
                     type="button"

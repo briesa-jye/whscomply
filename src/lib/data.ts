@@ -106,7 +106,7 @@ export type Invite = {
   from: string;
   by: string;
   date: string;
-  status: "Pending" | "Accepted" | "Declined";
+  status: "Pending" | "Accepted" | "Declined" | "Cancelled" | "Removed";
 };
 
 export type RiskLevel = "Low" | "Medium" | "High" | "Extreme";

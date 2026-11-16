@@ -463,6 +463,10 @@ type Store = Saved & {
   setNotify: (patch: Partial<Settings["notify"]>) => void;
   setWarnDays: (n: number) => void;
   respondInvite: (id: string, accept: boolean) => void;
+  /** withdraw an invitation the subcontractor has not answered */
+  cancelInvite: (id: string) => void;
+  /** take a subcontractor off a project: the project leaves them, their crew leave the site, the records stay */
+  removeSubFromProject: (subId: string, projectId: string) => void;
   inviteSub: (subId: string, projectId: string) => void;
   updateSub: (
     id: string,
@@ -1673,6 +1677,86 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
         `${accept ? "accepted" : "declined"} the invitation to ${projectName(s0, inv.projectId)}`,
         "Invited",
         accept ? "On the project" : "Declined",
+      ),
+    );
+  },
+  cancelInvite: (id) => {
+    const s0 = current();
+    const inv = s0.invites.find((i) => i.id === id);
+    if (!inv || inv.status !== "Pending") return;
+    const who = s0.subs.find((x) => x.id === inv.subId)?.name ?? "A subcontractor";
+    act(
+      (s) => ({
+        ...s,
+        invites: s.invites.map((i) =>
+          i.id === id ? { ...i, status: "Cancelled" } : i,
+        ),
+      }),
+      ev(
+        "People",
+        inv.projectId,
+        `cancelled the invitation for ${who} to ${projectName(s0, inv.projectId)}`,
+        "Invited",
+        "Cancelled",
+      ),
+    );
+  },
+  removeSubFromProject: (subId, projectId) => {
+    const s0 = current();
+    const sub = s0.subs.find((x) => x.id === subId);
+    if (!sub) return;
+    const crew = new Set(
+      s0.workers.filter((w) => w.company === subId).map((w) => w.id),
+    );
+    act(
+      (s) => ({
+        ...s,
+        subs: patchIn(s.subs, subId, (x) => ({
+          ...x,
+          projects: x.projects.filter((p) => p !== projectId),
+        })),
+        // Their crew leave the project and are signed off the site. Inductions and signed SWMS stay on record.
+        workers: s.workers.map((w) =>
+          crew.has(w.id)
+            ? { ...w, projects: w.projects.filter((p) => p !== projectId) }
+            : w,
+        ),
+        projects: patchIn(s.projects, projectId, (p) => ({
+          ...p,
+          onSite: p.onSite.filter((w) => !crew.has(w)),
+        })),
+        invites: s.invites.some(
+          (i) =>
+            i.subId === subId &&
+            i.projectId === projectId &&
+            i.status === "Accepted",
+        )
+          ? s.invites.map((i) =>
+              i.subId === subId &&
+              i.projectId === projectId &&
+              i.status === "Accepted"
+                ? { ...i, status: "Removed" }
+                : i,
+            )
+          : [
+              {
+                id: `inv-${uid()}`,
+                subId,
+                projectId,
+                from: s.settings.company.name,
+                by: me.name,
+                date: todayISO(),
+                status: "Removed" as const,
+              },
+              ...s.invites,
+            ],
+      }),
+      ev(
+        "People",
+        projectId,
+        `removed ${sub.name} from ${projectName(s0, projectId)}`,
+        "On the project",
+        "Removed",
       ),
     );
   },
