@@ -38,6 +38,54 @@ export function buildFacts(r: Records): IsoFacts {
 
 export type GenResult = { text: string; source: "AI" | "Template" };
 
+const reduced = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(new DOMException("Aborted", "AbortError"));
+    const t = window.setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        window.clearTimeout(t);
+        reject(new DOMException("Aborted", "AbortError"));
+      },
+      { once: true },
+    );
+  });
+
+/**
+ * Shows an already-built draft being written, a few characters at a time, so the built-in generator
+ * looks and feels like the AI streaming. The text is the finished text; this only paces the reveal.
+ */
+export async function reveal(
+  text: string,
+  onProgress: ((partial: string) => void) | undefined,
+  ms: number,
+  signal?: AbortSignal,
+) {
+  if (!onProgress || reduced() || ms <= 0) return;
+  const tick = 40;
+  const steps = Math.max(8, Math.round(ms / tick));
+  let shown = 0;
+  for (let i = 1; i <= steps; i++) {
+    // An ease-out curve: fast at first, settling as it nears the end, like a model slowing down to finish.
+    const f = 1 - Math.pow(1 - i / steps, 1.6);
+    let next = Math.floor(text.length * f);
+    // Break on a space so words appear whole.
+    const sp = text.indexOf(" ", next);
+    next = sp === -1 || sp - next > 12 ? next : sp;
+    if (next > shown) {
+      shown = next;
+      onProgress(text.slice(0, shown));
+    }
+    await sleep(tick, signal);
+  }
+  onProgress(text);
+}
+
 /**
  * Generates one document. With the AI connected it streams the document as it is written.
  * Without it (or if it fails) the built-in generator drafts from the same specification.
@@ -50,12 +98,14 @@ export async function generateDoc(
   today: string,
   onProgress?: (partial: string) => void,
   signal?: AbortSignal,
+  /** how long, in milliseconds, the built-in generator takes to write the document on screen */
+  pace = 0,
 ): Promise<GenResult & { note?: string }> {
-  const local = (note?: string) => ({
-    text: generateLocal(spec, profile, facts, today),
-    source: "Template" as const,
-    note,
-  });
+  const local = async (note?: string) => {
+    const text = generateLocal(spec, profile, facts, today);
+    await reveal(text, onProgress, pace, signal);
+    return { text, source: "Template" as const, note };
+  };
   try {
     const res = await fetch("/api/ai/iso", {
       method: "POST",
@@ -63,9 +113,9 @@ export async function generateDoc(
       body: JSON.stringify({ std, doc: spec.id, profile, facts, today }),
       signal,
     });
-    if (res.status === 503) return local();
+    if (res.status === 503) return await local();
     if (!res.ok || !res.body)
-      return local("The AI could not write this one, so a built-in draft was used.");
+      return await local("The AI could not write this one, so a built-in draft was used.");
     const reader = res.body.getReader();
     const dec = new TextDecoder();
     let text = "";
@@ -76,10 +126,10 @@ export async function generateDoc(
       onProgress?.(text.replace("[[GENERATION_FAILED]]", ""));
     }
     if (text.includes("[[GENERATION_FAILED]]") || text.trim().length < 400)
-      return local("The AI stopped part way, so a built-in draft was used.");
+      return await local("The AI stopped part way, so a built-in draft was used.");
     return { text: text.trim() + "\n", source: "AI" };
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") throw e;
-    return local("The AI could not be reached, so a built-in draft was used.");
+    return await local("The AI could not be reached, so a built-in draft was used.");
   }
 }

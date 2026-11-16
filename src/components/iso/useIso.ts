@@ -17,6 +17,15 @@ export function useIso() {
   const [partial, setPartial] = useState("");
   const [note, setNote] = useState("");
   const [queue, setQueue] = useState<{ done: number; total: number } | null>(null);
+  /** the generate-all run on screen: kept after it finishes until it is dismissed */
+  const [forge, setForge] = useState<{
+    std: IsoStd;
+    total: number;
+    done: string[];
+    words: number;
+    finished: boolean;
+    stopped: boolean;
+  } | null>(null);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -101,6 +110,7 @@ export function useIso() {
           todayISO(),
           setPartial,
           abort.current.signal,
+          3800,
         );
         save(std, spec, r.text, r.source);
         if (r.note) setNote(r.note);
@@ -122,26 +132,49 @@ export function useIso() {
       if (!todo.length) return;
       abort.current = new AbortController();
       setNote("");
+      setForge({ std, total: todo.length, done: [], words: 0, finished: false, stopped: false });
       let n = 0;
+      let stopped = false;
       for (const spec of todo) {
-        if (abort.current.signal.aborted) break;
+        if (abort.current.signal.aborted) {
+          stopped = true;
+          break;
+        }
         setQueue({ done: n, total: todo.length });
         setBusy(docKey(std, spec.id));
+        setPartial("");
         try {
-          const r = await generateDoc(spec, std, iso.profile, facts, todayISO(), undefined, abort.current.signal);
+          const r = await generateDoc(
+            spec,
+            std,
+            iso.profile,
+            facts,
+            todayISO(),
+            setPartial,
+            abort.current.signal,
+            1500,
+          );
           save(std, spec, r.text, r.source);
+          const words = r.text.split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+          setForge((f) =>
+            f ? { ...f, done: [...f.done, docKey(std, spec.id)], words: f.words + words } : f,
+          );
         } catch {
+          stopped = true;
           break;
         }
         n++;
       }
       setQueue(null);
       setBusy(null);
+      setPartial("");
+      setForge((f) => (f ? { ...f, finished: !stopped, stopped } : f));
     },
     [facts, iso.docs, iso.profile, iso.purchases, save],
   );
 
   const stop = useCallback(() => abort.current?.abort(), []);
+  const dismissForge = useCallback(() => setForge(null), []);
 
   const approve = useCallback(
     (std: IsoStd, spec: IsoDocSpec) => {
@@ -157,5 +190,5 @@ export function useIso() {
     [iso.docs, s],
   );
 
-  return { ...s, iso, aiOn, busy, partial, note, queue, facts, stats, unlocked, generate, generateAll, stop, approve, save };
+  return { ...s, iso, aiOn, busy, partial, note, queue, forge, dismissForge, facts, stats, unlocked, generate, generateAll, stop, approve, save };
 }

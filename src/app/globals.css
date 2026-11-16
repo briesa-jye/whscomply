@@ -366,3 +366,74 @@ main .grid > * {
   .iso-doc { position: absolute; left: 0; top: 0; width: 100%; border: 0 !important; padding: 0 !important; }
   .iso-doc .tbl { overflow: visible; }
 }
+
+/* ISO Vault: the writing stage and the forge */
+@keyframes forge-glow {
+  0%, 100% { box-shadow: 0 0 0 1px oklch(0.72 0.17 45 / 0.25), 0 0 28px -6px oklch(0.72 0.17 45 / 0.35); }
+  50% { box-shadow: 0 0 0 1px oklch(0.72 0.17 45 / 0.6), 0 0 52px -4px oklch(0.72 0.17 45 / 0.6); }
+}
+.forge-glow { animation: forge-glow 2.4s ease-in-out infinite; }
+
+@keyframes forge-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.forge-bar { position: relative; overflow: hidden; }
+.forge-bar::after {
+  content: ""; position: absolute; inset: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, #ff804a, transparent);
+  animation: forge-sweep 1.4s linear infinite;
+}
+
+@keyframes forge-blink { 50% { opacity: 0; } }
+.forge-caret {
+  display: inline-block; width: 0.55em; height: 1.05em; margin-left: 2px;
+  vertical-align: -0.15em; background: #ff804a; border-radius: 1px;
+  animation: forge-blink 0.9s steps(1) infinite;
+}
+.forge-caret-light { background: #ff804a; margin-left: 6px; }
+
+@keyframes forge-scan {
+  0% { transform: translateY(-100%); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(520%); opacity: 0; }
+}
+.forge-scan {
+  background: linear-gradient(to bottom, transparent, oklch(0.72 0.17 45 / 0.18), transparent);
+  animation: forge-scan 2.8s ease-in-out infinite;
+}
+
+.forge-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 90% at 70% 0%, black, transparent);
+}
+
+.forge-fill { transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); box-shadow: 0 0 14px oklch(0.72 0.17 45 / 0.8); }
+
+@keyframes forge-tile-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 oklch(0.72 0.17 45 / 0.6); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 6px oklch(0.72 0.17 45 / 0); }
+}
+.forge-tile-now { animation: forge-tile-pulse 1.1s ease-out infinite; }
+
+@keyframes forge-tile-pop {
+  0% { transform: scale(0.7); opacity: 0.4; }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.forge-tile-done { animation: forge-tile-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+@keyframes forge-burst {
+  0% { box-shadow: 0 0 0 0 oklch(0.72 0.17 45 / 0.9), 0 0 0 1px oklch(0.72 0.17 45 / 0.8); }
+  100% { box-shadow: 0 0 0 38px oklch(0.72 0.17 45 / 0), 0 0 40px -6px oklch(0.72 0.17 45 / 0.55); }
+}
+.forge-finish { animation: forge-burst 1.1s ease-out 1 both; box-shadow: 0 0 40px -6px oklch(0.72 0.17 45 / 0.55); }
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-glow, .forge-bar::after, .forge-caret, .forge-scan, .forge-tile-now, .forge-tile-done, .forge-finish { animation: none; }
+  .forge-fill { transition: none; }
+}

@@ -7,6 +7,7 @@ import { Icon } from "@/components/Icons";
 import { useIso } from "@/components/iso/useIso";
 import { btnDark, btnLight, Card, EmptyState, Pill } from "@/components/app/ui";
 import { PurchaseModal } from "@/components/iso/PurchaseModal";
+import { WritingStage } from "@/components/iso/Forge";
 import { docNumber, findDoc } from "@/lib/iso/catalogue";
 import { download, fileSafe, mdToHtml, wordCount, wordHtml } from "@/lib/iso/markdown";
 import { ISO_PRICE, isStd, money, STANDARDS } from "@/lib/iso/standards";
@@ -147,7 +148,9 @@ export default function IsoDocument() {
         </p>
       )}
 
-      {!saved && !working ? (
+      {working ? (
+        <WritingStage title={spec.title} no={no} text={text} facts={v.facts} />
+      ) : !saved ? (
         <Card>
           <EmptyState
             title="This document has not been written yet"
@@ -164,12 +167,6 @@ export default function IsoDocument() {
         />
       ) : (
         <>
-          {working && (
-            <p role="status" className="mb-3 flex items-center gap-2 text-sm text-ink-soft">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-accent" /> Writing the document
-              {text ? `, ${wordCount(text).toLocaleString("en-AU")} words so far` : ""}
-            </p>
-          )}
           <article
             className="iso-doc rounded-2xl border border-line bg-surface p-5 sm:p-8"
             // The text is escaped by mdToHtml before any markup is added, so a document cannot inject HTML.

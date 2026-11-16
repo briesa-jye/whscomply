@@ -10,6 +10,7 @@ import { CATALOGUE, coverage, docNumber } from "@/lib/iso/catalogue";
 import { download, fileSafe, wordHtml } from "@/lib/iso/markdown";
 import { ISO_PRICE, isStd, money, STANDARDS } from "@/lib/iso/standards";
 import { PurchaseModal } from "@/components/iso/PurchaseModal";
+import { ForgePanel } from "@/components/iso/Forge";
 import { docKey, type DocKind, type IsoStd } from "@/lib/iso/types";
 import { fmtDate } from "@/lib/format";
 
@@ -84,9 +85,24 @@ export default function IsoStandard() {
         }
       />
 
-      {(v.queue || v.note) && (
+      {v.forge && v.forge.std === std && (
+        <ForgePanel
+          std={std}
+          doneKeys={v.forge.done}
+          currentKey={v.busy}
+          partial={v.partial}
+          words={v.forge.words}
+          total={v.forge.total}
+          finished={v.forge.finished}
+          stopped={v.forge.stopped}
+          builtIn={v.forge.done.some((k) => v.iso.docs[k]?.source === "Template")}
+          onStop={v.stop}
+          onDismiss={v.dismissForge}
+        />
+      )}
+      {!v.forge && v.note && (
         <div role="status" className="mb-4 rounded-xl border border-line bg-tint/60 px-4 py-3 text-sm">
-          {v.queue ? `Writing document ${v.queue.done + 1} of ${v.queue.total}. You can leave this page open and keep working.` : v.note}
+          {v.note}
         </div>
       )}
       {!open && (
