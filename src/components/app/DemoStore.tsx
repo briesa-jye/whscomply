@@ -79,8 +79,9 @@ import {
 } from "@/lib/data";
 import { clearFiles, type Attachment } from "@/lib/files";
 import { todayISO } from "@/lib/format";
+import type { IsoDocState, IsoProfile, IsoState } from "@/lib/iso/types";
 
-const KEY = "whscomply-demo-v7";
+const KEY = "whscomply-demo-v8";
 
 export const ALL = "all";
 
@@ -116,6 +117,7 @@ type Saved = {
   drawings: Drawing[];
   schedules: InspectionSchedule[];
   invites: Invite[];
+  iso: IsoState;
 };
 
 const SEED: Saved = {
@@ -148,6 +150,26 @@ const SEED: Saved = {
   drawings: seedDrawings,
   schedules: seedSchedules,
   invites: seedInvites,
+  iso: {
+    profile: {
+      company: seedSettings.company.name,
+      abn: seedSettings.company.abn,
+      address: "",
+      state: "NSW",
+      scope: "Residential and commercial building construction, alterations and fit-out",
+      staff: "",
+      sites: "",
+      buildingTypes: ["Residential", "Commercial"],
+      subcontractUse: "Heavy",
+      hazards: "",
+      topManagement: "",
+      topTitle: "Managing Director",
+      rep: "",
+      existing: "",
+      customers: "",
+    },
+    docs: {},
+  },
 };
 
 /* ---- a tiny external store over localStorage, so state survives navigation and reloads ---- */
@@ -187,7 +209,10 @@ function valid(p: Saved | null): p is Saved {
     Array.isArray(p.notices) &&
     Array.isArray(p.drawings) &&
     Array.isArray(p.schedules) &&
-    Array.isArray(p.invites)
+    Array.isArray(p.invites) &&
+    !!p.iso &&
+    !!p.iso.profile &&
+    !!p.iso.docs
   );
 }
 
@@ -462,6 +487,9 @@ type Store = Saved & {
   updateCompany: (patch: Partial<Settings["company"]>) => void;
   setNotify: (patch: Partial<Settings["notify"]>) => void;
   setWarnDays: (n: number) => void;
+  setIsoProfile: (patch: Partial<IsoProfile>) => void;
+  saveIsoDoc: (key: string, doc: IsoDocState, note?: string) => void;
+  removeIsoDoc: (key: string) => void;
   respondInvite: (id: string, accept: boolean) => void;
   /** withdraw an invitation the subcontractor has not answered */
   cancelInvite: (id: string) => void;
@@ -1653,6 +1681,26 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     );
   },
 
+  setIsoProfile: (patch) =>
+    update((s) => ({
+      ...s,
+      iso: { ...s.iso, profile: { ...s.iso.profile, ...patch } },
+    })),
+  saveIsoDoc: (key, doc, note) => {
+    const write = (s: Saved): Saved => ({
+      ...s,
+      iso: { ...s.iso, docs: { ...s.iso.docs, [key]: doc } },
+    });
+    if (note)
+      act(write, ev("Documents", ALL, note, "", doc.status));
+    else update(write);
+  },
+  removeIsoDoc: (key) =>
+    update((s) => {
+      const docs = { ...s.iso.docs };
+      delete docs[key];
+      return { ...s, iso: { ...s.iso, docs } };
+    }),
   respondInvite: (id, accept) => {
     const s0 = current();
     const inv = s0.invites.find((i) => i.id === id);

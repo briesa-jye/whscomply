@@ -479,6 +479,32 @@ Injury frequency rates need hours worked. Enter them for each project in the tab
 Choose **Export (CSV)** to download the numbers.`,
   },
   {
+    id: "iso-vault",
+    title: "ISO Vault: ISO 9001, 45001 and 14001 documents",
+    category: "Business and settings",
+    icon: "shield",
+    summary: "Generate, review and approve the documents for quality, safety and environmental certification.",
+    open: { href: "/dashboard/iso-vault", label: "Open ISO Vault" },
+    body: `## What it is
+ISO Vault writes the documentation for three standards: **ISO 9001** (quality), **ISO 45001** (health and safety) and **ISO 14001** (environmental). Each set has the policy, scope, procedures, registers, forms, an internal audit checklist and a management review template that an auditor expects.
+
+## Set it up
+1. Open **ISO Vault** and fill in your business details. Everything is written from these, so the more specific you are, the better the documents.
+2. Open a standard and choose **Generate** on one document, or **Generate all** for the whole set.
+3. Open each document and read it. Choose **Edit** to change anything that is not how you work.
+4. Choose **Approve** when you are happy. Required documents are marked, and the progress bar counts only approved ones.
+5. **Download manual** gives you the whole set as one Word file. Each document also downloads as Word or Markdown, or print it to PDF.
+
+## Your own records
+Registers such as the hazard register, plant, chemicals and subcontractor lists are filled from what you already keep in WHSCOMPLY.
+
+## Clause coverage
+The **Clause coverage** tab lists every clause of the standard, the question an auditor asks and the documents that answer it.
+
+## What it does not do
+Documents do not certify you. A certification body accredited by JAS-ANZ audits a system you have put into practice and issues the certificate. Treat everything generated as a draft, and check anything with legal consequences with your regulator or adviser.`,
+  },
+  {
     id: "documents-audit",
     title: "Documents and the audit pack",
     category: "Business and settings",

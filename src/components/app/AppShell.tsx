@@ -20,6 +20,7 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
       { href: "/dashboard/assistant", label: "Assistance", icon: "sparkle" },
       { href: "/dashboard/ai", label: "AI toolkit", icon: "list" },
       { href: "/dashboard/reports", label: "Reports", icon: "scale" },
+      { href: "/dashboard/iso-vault", label: "ISO Vault", icon: "shield" },
     ],
   },
   {

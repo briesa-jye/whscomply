@@ -54,6 +54,12 @@ const PAGES: { title: string; href: string; icon: IconName; words: string }[] =
       words: "ltifr trifr kpi statistics injury rates summary",
     },
     {
+      title: "ISO Vault",
+      href: "/dashboard/iso-vault",
+      icon: "shield",
+      words: "iso 9001 45001 14001 quality safety environmental certification documents policy procedure manual audit",
+    },
+    {
       title: "Site diary",
       href: "/dashboard/diary",
       icon: "book",
