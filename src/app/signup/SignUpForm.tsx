@@ -328,9 +328,10 @@ function DetailsStep({
       company: value.company.trim(),
       abn: value.abn,
       email: value.email.trim(),
+      contact: value.name.trim(),
       account: "subcontractor",
     });
-    window.setTimeout(() => router.push("/dashboard"), 900);
+    window.setTimeout(() => router.push(sub ? "/portal" : "/dashboard"), 900);
   }
 
   return (
@@ -593,6 +594,7 @@ function CardStep({ plan, details }: { plan: BuilderPlan; details: Details }) {
       company: details.company.trim(),
       abn: details.abn,
       email: details.email.trim(),
+      contact: details.name.trim(),
       account: "builder",
       plan,
       trialEnds: isoDate(trialEndDate()),

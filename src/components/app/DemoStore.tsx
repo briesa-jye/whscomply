@@ -37,6 +37,7 @@ import {
   seedProjects,
   seedRisks,
   seedSettings,
+  seedInvites,
   seedSubcontractors,
   seedSwms,
   seedTalks,
@@ -67,6 +68,7 @@ import {
   type Project,
   type Risk,
   type Settings,
+  type Invite,
   type SubDoc,
   type Subcontractor,
   type Swms,
@@ -78,7 +80,7 @@ import {
 import { clearFiles, type Attachment } from "@/lib/files";
 import { todayISO } from "@/lib/format";
 
-const KEY = "whscomply-demo-v5";
+const KEY = "whscomply-demo-v6";
 
 export const ALL = "all";
 
@@ -113,6 +115,7 @@ type Saved = {
   notices: Notice[];
   drawings: Drawing[];
   schedules: InspectionSchedule[];
+  invites: Invite[];
 };
 
 const SEED: Saved = {
@@ -144,6 +147,7 @@ const SEED: Saved = {
   notices: seedNotices,
   drawings: seedDrawings,
   schedules: seedSchedules,
+  invites: seedInvites,
 };
 
 /* ---- a tiny external store over localStorage, so state survives navigation and reloads ---- */
@@ -182,7 +186,8 @@ function valid(p: Saved | null): p is Saved {
     Array.isArray(p.tasks) &&
     Array.isArray(p.notices) &&
     Array.isArray(p.drawings) &&
-    Array.isArray(p.schedules)
+    Array.isArray(p.schedules) &&
+    Array.isArray(p.invites)
   );
 }
 
@@ -444,6 +449,12 @@ type Store = Saved & {
   updateCompany: (patch: Partial<Settings["company"]>) => void;
   setNotify: (patch: Partial<Settings["notify"]>) => void;
   setWarnDays: (n: number) => void;
+  respondInvite: (id: string, accept: boolean) => void;
+  inviteSub: (subId: string, projectId: string) => void;
+  updateSub: (
+    id: string,
+    patch: Partial<Pick<Subcontractor, "name" | "trade" | "contact" | "phone">>,
+  ) => void;
   resetDemo: () => void;
 };
 
@@ -1604,36 +1615,133 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     );
   },
 
+  respondInvite: (id, accept) =>
+    update((s) => {
+      const inv = s.invites.find((i) => i.id === id);
+      if (!inv) return s;
+      return {
+        ...s,
+        invites: s.invites.map((i) =>
+          i.id === id
+            ? { ...i, status: accept ? "Accepted" : "Declined" }
+            : i,
+        ),
+        subs: accept
+          ? patchIn(s.subs, inv.subId, (x) =>
+              x.projects.includes(inv.projectId)
+                ? x
+                : { ...x, projects: [...x.projects, inv.projectId] },
+            )
+          : s.subs,
+      };
+    }),
+  inviteSub: (subId, projectId) =>
+    update((s) =>
+      s.invites.some(
+        (i) =>
+          i.subId === subId &&
+          i.projectId === projectId &&
+          i.status === "Pending",
+      )
+        ? s
+        : {
+            ...s,
+            invites: [
+              {
+                id: `inv-${uid()}`,
+                subId,
+                projectId,
+                from: s.settings.company.name,
+                by: me.name,
+                date: todayISO(),
+                status: "Pending",
+              },
+              ...s.invites,
+            ],
+          },
+    ),
+  updateSub: (id, patch) =>
+    update((s) => ({ ...s, subs: patchIn(s.subs, id, (x) => ({ ...x, ...patch })) })),
+
   resetDemo: () => {
     clearFiles().catch(() => {});
     writeSaved(SEED);
   },
 };
 
-/** Called when someone signs up: puts their company details into the workspace. */
+/** Called when someone signs up: builders put their company into the workspace, subcontractors get a record of their own. */
 export function startWorkspace(input: {
   company: string;
   abn: string;
   email: string;
+  contact: string;
   account: "builder" | "subcontractor";
   plan?: string;
   trialEnds?: string;
   card?: NonNullable<Settings["card"]>;
 }) {
+  update((s) => {
+    if (input.account === "subcontractor") {
+      const id = `s-${uid()}`;
+      const live = s.projects.filter((p) => p.status === "Live").slice(0, 2);
+      return {
+        ...s,
+        subs: [
+          ...s.subs,
+          {
+            id,
+            name: input.company,
+            trade: "",
+            contact: input.contact,
+            phone: "",
+            projects: [],
+            approved: false,
+            docs: [],
+          },
+        ],
+        // A new subcontractor starts with invitations from the builder, as they would in real life.
+        invites: [
+          ...live.map((p) => ({
+            id: `inv-${uid()}`,
+            subId: id,
+            projectId: p.id,
+            from: s.settings.company.name,
+            by: p.manager,
+            date: todayISO(),
+            status: "Pending" as const,
+          })),
+          ...s.invites,
+        ],
+        settings: { ...s.settings, account: "subcontractor", subId: id },
+      };
+    }
+    return {
+      ...s,
+      settings: {
+        ...s.settings,
+        company: {
+          ...s.settings.company,
+          name: input.company,
+          abn: input.abn,
+          email: input.email,
+        },
+        account: "builder",
+        plan: input.plan,
+        trialEnds: input.trialEnds,
+        card: input.card,
+      },
+    };
+  });
+}
+
+/** Sign in as a builder or a subcontractor. The demo shows the Apex Scaffolding portal unless someone signed up as a subcontractor. */
+export function signInAs(account: "builder" | "subcontractor") {
   update((s) => ({
     ...s,
     settings: {
       ...s.settings,
-      company: {
-        ...s.settings.company,
-        name: input.company,
-        abn: input.abn,
-        email: input.email,
-      },
-      account: input.account,
-      plan: input.plan,
-      trialEnds: input.trialEnds,
-      card: input.card,
+      account,
+      subId: s.settings.subId ?? "s-apex",
     },
   }));
 }

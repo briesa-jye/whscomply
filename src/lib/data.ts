@@ -93,6 +93,18 @@ export type Subcontractor = {
   prequal?: { id: string; text: string; done: boolean }[];
 };
 
+/** A builder asking a subcontractor to work on a project. Accepting it adds the project to the subcontractor. */
+export type Invite = {
+  id: string;
+  subId: string;
+  projectId: string;
+  /** the builder's business name */
+  from: string;
+  by: string;
+  date: string;
+  status: "Pending" | "Accepted" | "Declined";
+};
+
 export type RiskLevel = "Low" | "Medium" | "High" | "Extreme";
 
 export type SwmsStep = {
@@ -287,6 +299,8 @@ export type Settings = {
   warnDays: number;
   /** set at sign up */
   account?: "builder" | "subcontractor";
+  /** which subcontractor record the subcontractor portal shows */
+  subId?: string;
   plan?: string;
   trialEnds?: string;
   card?: { brand: string; last4: string; exp: string; name: string };
@@ -801,6 +815,24 @@ export const seedWorkers: Worker[] = [
         kind: "Working at heights",
         number: "WAH-4410",
         expires: addDays(-12),
+      },
+    ],
+  },
+  {
+    id: "w-lopez",
+    name: "Dan Lopez",
+    role: "Scaffolder",
+    company: "s-apex",
+    phone: "0412 100 209",
+    projects: ["p-marsh", "p-quarry"],
+    inducted: ["p-marsh"],
+    tickets: [
+      { id: "tl1", kind: TICKET_KINDS[0], number: "WC-771204", expires: null },
+      {
+        id: "tl2",
+        kind: "High risk work licence, scaffolding",
+        number: "SB-55120",
+        expires: addDays(21),
       },
     ],
   },
@@ -2328,5 +2360,17 @@ export const seedSchedules: InspectionSchedule[] = [
     projectId: "p-quarry",
     kind: "Electrical and leads",
     everyDays: 7,
+  },
+];
+
+export const seedInvites: Invite[] = [
+  {
+    id: "inv-1",
+    subId: "s-apex",
+    projectId: "p-harbour",
+    from: seedSettings.company.name,
+    by: "Sam Kowalski",
+    date: addDays(-1),
+    status: "Pending",
   },
 ];

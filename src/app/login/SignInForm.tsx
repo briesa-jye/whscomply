@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Icon } from "@/components/Icons";
+import { signInAs } from "@/components/app/DemoStore";
 
 const field =
   "block w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-[15px] text-ink shadow-sm outline-none transition-colors placeholder:text-ink-soft/70 focus:border-accent focus:ring-4 focus:ring-accent/15";
@@ -14,6 +15,7 @@ export function SignInForm() {
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [keep, setKeep] = useState(true);
+  const [account, setAccount] = useState<"builder" | "subcontractor">("builder");
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,7 +34,8 @@ export function SignInForm() {
     setError("");
     setBusy(true);
     // Demo workspace: there is no account check yet, so any details open the dashboard.
-    router.push("/dashboard");
+    signInAs(account);
+    router.push(account === "subcontractor" ? "/portal" : "/dashboard");
   }
 
   function forgot() {
@@ -46,6 +49,33 @@ export function SignInForm() {
 
   return (
     <form onSubmit={submit} noValidate className="mt-8 space-y-5">
+      <div
+        role="radiogroup"
+        aria-label="Account type"
+        className="grid grid-cols-2 gap-1 rounded-xl bg-tint p-1"
+      >
+        {(
+          [
+            ["builder", "Builder"],
+            ["subcontractor", "Subcontractor"],
+          ] as const
+        ).map(([v, text]) => (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={account === v}
+            onClick={() => setAccount(v)}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              account === v
+                ? "bg-surface text-ink shadow-sm"
+                : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
       <div>
         <label
           htmlFor="email"
@@ -137,7 +167,7 @@ export function SignInForm() {
       <p className="text-center text-sm text-ink-soft">
         Don&apos;t have an account?{" "}
         <Link
-          href="/signup"
+          href={account === "subcontractor" ? "/signup?type=subcontractor" : "/signup"}
           className="font-semibold text-accent hover:underline"
         >
           Sign up

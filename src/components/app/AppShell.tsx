@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 import { me } from "@/lib/data";
 import { Icon, type IconName } from "../Icons";
-import { useStore } from "./DemoStore";
+import { signInAs, useStore } from "./DemoStore";
 import { GlobalSearch } from "./GlobalSearch";
 import { NotificationsBell } from "./NotificationsBell";
 import { ProjectSwitcher } from "./ProjectSwitcher";
@@ -100,7 +100,14 @@ const ALL_ITEMS = GROUPS.flatMap((g) => g.items);
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const { resetDemo, settings } = useStore();
+  const router = useRouter();
+  const { resetDemo, settings, ready } = useStore();
+
+  // Subcontractors have their own portal.
+  useEffect(() => {
+    if (ready && settings.account === "subcontractor")
+      router.replace("/portal");
+  }, [ready, settings.account, router]);
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === href : pathname.startsWith(href);
@@ -271,6 +278,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="font-semibold underline"
           >
             Reset demo
+          </button>
+          {" · "}
+          <button
+            type="button"
+            onClick={() => {
+              signInAs("subcontractor");
+              router.push("/portal");
+            }}
+            className="font-semibold underline"
+          >
+            View the subcontractor portal
           </button>
         </div>
 

@@ -14,7 +14,7 @@ export function SiteChrome({
   children: ReactNode;
 }) {
   const path = usePathname();
-  const inApp = path.startsWith("/dashboard");
+  const inApp = path.startsWith("/dashboard") || path.startsWith("/portal");
   const auth = path === "/login" || path === "/signup";
   if (auth) return <main className="flex-1">{children}</main>;
   if (inApp) return <main className="flex-1">{children}</main>;

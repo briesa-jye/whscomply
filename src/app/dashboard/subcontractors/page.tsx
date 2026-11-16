@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/Icons";
-import { useScope } from "@/components/app/DemoStore";
+import { useScope, useStore } from "@/components/app/DemoStore";
 import { DocForm, SubForm } from "@/components/app/forms";
 import {
   btnDark,
@@ -23,6 +23,7 @@ import { fmtDate } from "@/lib/format";
 
 export default function SubsPage() {
   const s = useScope();
+  const all = useStore();
   const [adding, setAdding] = useState(false);
   const [docFor, setDocFor] = useState<Subcontractor | null>(null);
 
@@ -166,6 +167,35 @@ export default function SubsPage() {
                     ))}
                   </ul>
                 </details>
+                <div className="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3 text-xs">
+                  <label className="flex items-center gap-2 font-semibold">
+                    Invite to project
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) all.inviteSub(x.id, e.target.value);
+                      }}
+                      className="rounded-lg border border-line bg-bg px-2 py-1.5 text-xs font-normal"
+                    >
+                      <option value="">Choose…</option>
+                      {all.projects
+                        .filter((pr) => !x.projects.includes(pr.id))
+                        .map((pr) => (
+                          <option key={pr.id} value={pr.id}>
+                            {pr.name}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  {all.invites
+                    .filter((i) => i.subId === x.id && i.status === "Pending")
+                    .map((i) => (
+                      <Pill key={i.id}>
+                        Invited to{" "}
+                        {all.projects.find((pr) => pr.id === i.projectId)?.name}
+                      </Pill>
+                    ))}
+                </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-bg px-5 py-3">
                   <button
                     type="button"
