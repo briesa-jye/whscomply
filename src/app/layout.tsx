@@ -75,7 +75,8 @@ const links = [
   ["About", "/about"],
   ["Resources", "/resources"],
   ["Demo dashboard", "/dashboard"],
-  ["Login", "/dashboard"],
+  ["Login", "/login"],
+  ["Sign up", "/signup"],
 ];
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

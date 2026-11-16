@@ -1610,6 +1610,26 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
   },
 };
 
+/** Called when someone signs up: puts their company details into the workspace. */
+export function startWorkspace(input: {
+  company: string;
+  abn: string;
+  email: string;
+}) {
+  update((s) => ({
+    ...s,
+    settings: {
+      ...s.settings,
+      company: {
+        ...s.settings.company,
+        name: input.company,
+        abn: input.abn,
+        email: input.email,
+      },
+    },
+  }));
+}
+
 const Ctx = createContext<Store | null>(null);
 
 export function DemoStoreProvider({ children }: { children: ReactNode }) {

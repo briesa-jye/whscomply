@@ -82,13 +82,13 @@ export function Navbar() {
 
           <div className="flex items-center gap-2">
             <Link
-              href="/dashboard"
+              href="/login"
               className={`whitespace-nowrap rounded-full border border-line font-semibold transition-all duration-500 hover:bg-tint ${pill ? "px-5 py-2 text-sm" : "px-6 py-2.5 text-base"}`}
             >
               Login
             </Link>
             <Link
-              href="https://auth.briesa.com/signup"
+              href="/signup"
               className={`hidden whitespace-nowrap rounded-full bg-ink font-semibold text-bg transition-all duration-500 hover:bg-ink/85 sm:inline-block ${pill ? "px-5 py-2 text-sm" : "px-6 py-2.5 text-base"}`}
             >
               Sign up
@@ -127,14 +127,14 @@ export function Navbar() {
           </ul>
           <div className="mt-5 grid grid-cols-2 gap-3">
             <Link
-              href="/dashboard"
+              href="/login"
               onClick={() => setOpen(false)}
               className="rounded-full border border-line py-3 text-center font-semibold"
             >
               Login
             </Link>
             <Link
-              href="https://auth.briesa.com/signup"
+              href="/signup"
               onClick={() => setOpen(false)}
               className="rounded-full bg-ink py-3 text-center font-semibold text-bg"
             >
