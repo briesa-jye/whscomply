@@ -1615,6 +1615,10 @@ export function startWorkspace(input: {
   company: string;
   abn: string;
   email: string;
+  account: "builder" | "subcontractor";
+  plan?: string;
+  trialEnds?: string;
+  card?: NonNullable<Settings["card"]>;
 }) {
   update((s) => ({
     ...s,
@@ -1626,6 +1630,10 @@ export function startWorkspace(input: {
         abn: input.abn,
         email: input.email,
       },
+      account: input.account,
+      plan: input.plan,
+      trialEnds: input.trialEnds,
+      card: input.card,
     },
   }));
 }

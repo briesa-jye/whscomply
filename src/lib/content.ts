@@ -433,6 +433,6 @@ export const homeFaqs: Faq[] = [
   },
   {
     q: "How is WHSCOMPLY priced?",
-    a: "Pricing is by project, not per worker. Book a demo and we will quote you based on how many sites you run.",
+    a: "Builder plans are Small $149, Medium $349 and Large $549 a month, based on how many live projects you run, never per worker. Subcontractors are free.",
   },
 ];

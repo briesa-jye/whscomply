@@ -6,24 +6,28 @@ import { breadcrumbs, faqPage, JsonLd } from "@/lib/jsonld";
 import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Pricing by Project, Never Per Worker",
+  title: "Pricing: Small $149, Medium $349, Large $549 a Month",
   description:
-    "WHSCOMPLY is priced by project, not per worker. Plans for subcontractors, builders and groups. Book a demo for a quote.",
+    "WHSCOMPLY for builders is $149, $349 or $549 a month by the number of live projects, never per worker. Subcontractors are always free.",
   alternates: { canonical: "/pricing" },
 };
 
 const faqs = [
   [
     "Do you charge per worker?",
-    "No. Pricing follows the number of projects you run. Every worker, subcontractor and site manager has an account of their own.",
+    "No. Builder plans follow the number of live projects you run. Every worker, subcontractor and site manager has an account of their own.",
   ],
   [
-    "How is the price worked out?",
-    "By how many sites you run and what you need on them. Book a demo and we will quote you on the call.",
+    "Are subcontractors really free?",
+    "Yes. A builder onboards its subcontractors from the builder dashboard and the subcontractor account is free, with no trial and no card. Only the builder pays.",
+  ],
+  [
+    "How does the free trial work?",
+    "Every builder plan starts with a 14-day free trial. You add a card to start, nothing is charged for 14 days, and you can cancel before then.",
   ],
   [
     "Can we change plan later?",
-    "Yes. A plan is a limit, not a different system, so nothing is migrated when you move up or down.",
+    "Yes. A plan is a limit on live projects, not a different system, so nothing is migrated when you move up or down.",
   ],
   [
     "Does an inspector need a seat?",
@@ -55,8 +59,8 @@ export default function Pricing() {
           </>
         }
       >
-        Tell us how many sites you run and we will quote you. Hover or tap a
-        plan to compare.
+        Pick the plan that fits how many live projects you run. Subcontractors
+        join free. Hover or tap a plan to compare.
       </PageHeader>
 
       <ul
@@ -65,6 +69,7 @@ export default function Pricing() {
       >
         {[
           "No per-worker charges",
+          "Subcontractors are free",
           "Inspector access is free",
           "Bring your existing records",
         ].map((t) => (

@@ -285,6 +285,11 @@ export type Settings = {
   };
   /** days of warning before a ticket or document expires */
   warnDays: number;
+  /** set at sign up */
+  account?: "builder" | "subcontractor";
+  plan?: string;
+  trialEnds?: string;
+  card?: { brand: string; last4: string; exp: string; name: string };
 };
 
 /* ---------- permits, plant, chemicals, emergency, visitors, documents ---------- */

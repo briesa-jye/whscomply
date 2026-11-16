@@ -7,6 +7,7 @@ import { Icon, type IconName } from "./Icons";
 type Plan = {
   name: string;
   icon: IconName;
+  price: number;
   blurb: string;
   badge?: string;
   top: string[];
@@ -16,52 +17,55 @@ type Plan = {
 
 const plans: Plan[] = [
   {
-    name: "Subcontractor",
+    name: "Small",
     icon: "user",
-    blurb: "For a small business with a crew and a few sites.",
+    price: 149,
+    blurb: "For a builder with a few live sites.",
     top: [
+      "Up to 3 live projects",
       "Never charged per worker",
-      "SWMS library and gate sign-on",
-      "Incident and near miss reports",
+      "Subcontractors join free",
     ],
     lead: "What's included:",
     features: [
-      "Unlimited workers and tickets",
+      "SWMS library and gate sign-on",
+      "Incident and near miss reports",
       "Licence and white card alerts before expiry",
       "Toolbox talks with attendance",
-      "Insurance and WorkCover dates tracked",
       "Audit pack export",
     ],
   },
   {
-    name: "Builder",
+    name: "Medium",
     icon: "store",
-    blurb: "For a builder running several live projects.",
+    price: 349,
+    blurb: "For a builder running several projects at once.",
     badge: "Popular",
     top: [
+      "Up to 10 live projects",
       "Never charged per worker",
-      "Every live site on one board",
-      "Subcontractor prequalification",
+      "Subcontractors join free",
     ],
-    lead: "Everything in Subcontractor, for the whole business:",
+    lead: "Everything in Small, plus:",
     features: [
       "Site inductions with sign-on and sign-off",
       "Inspections and corrective actions",
-      "Approved subcontractor list per project",
+      "Subcontractor prequalification and approved lists",
       "Read-only access for inspectors and clients",
       "Priority support",
     ],
   },
   {
-    name: "Group",
+    name: "Large",
     icon: "building",
+    price: 549,
     blurb: "For a multi-site builder with a safety team.",
     top: [
+      "Unlimited live projects",
       "Never charged per worker",
-      "Roles and approvals across sites",
-      "Reporting by site, trade and period",
+      "Subcontractors join free",
     ],
-    lead: "Everything in Builder:",
+    lead: "Everything in Medium, plus:",
     features: [
       "Company-wide compliance reporting",
       "Bulk import of workers and subcontractors",
@@ -72,12 +76,13 @@ const plans: Plan[] = [
   },
 ];
 
-const DEFAULT = "Builder";
+const DEFAULT = "Medium";
 
 export function PricingGrid() {
   const [active, setActive] = useState(DEFAULT);
 
   return (
+    <>
     <div
       data-stagger
       className="mx-auto mt-14 grid max-w-6xl items-stretch gap-6 px-5 sm:px-8 md:grid-cols-3"
@@ -120,23 +125,28 @@ export function PricingGrid() {
             </p>
 
             <p className="mt-6 font-display text-4xl font-extrabold tracking-tight">
-              Quote
+              ${p.price}
+              <span
+                className={`ml-1 text-base font-semibold ${on ? "text-bg/75" : "text-ink-soft"}`}
+              >
+                / month
+              </span>
             </p>
             <p
               className={`mt-1 text-sm ${on ? "text-bg/75" : "text-ink-soft"}`}
             >
-              Priced by project, never per worker
+              14-day free trial. Cancel anytime.
             </p>
 
             <Link
-              href="/demo"
+              href={`/signup?plan=${p.name}`}
               className={`mt-7 rounded-xl px-5 py-3.5 text-center font-semibold transition-colors duration-200 ${
                 on
                   ? "bg-bg text-ink hover:bg-surface"
                   : "bg-ink text-bg hover:bg-ink/85"
               }`}
             >
-              Book a demo
+              Start free trial
             </Link>
 
             <hr className={`my-7 ${on ? "border-bg/20" : "border-line"}`} />
@@ -170,5 +180,29 @@ export function PricingGrid() {
         );
       })}
     </div>
+    <div className="mx-auto mt-8 max-w-6xl px-5 sm:px-8">
+    <div
+      data-reveal
+      className="flex flex-col items-start justify-between gap-5 rounded-[2rem] border border-line bg-tint p-8 sm:flex-row sm:items-center"
+    >
+      <div>
+        <p className="font-display text-2xl font-extrabold tracking-tight">
+          Subcontractors are always free.
+        </p>
+        <p className="mt-1 max-w-xl text-ink-soft">
+          A builder invites you from their own dashboard. You keep your tickets,
+          insurances and SWMS in one free account and use them on every builder
+          you work for.
+        </p>
+      </div>
+      <Link
+        href="/signup?type=subcontractor"
+        className="shrink-0 whitespace-nowrap rounded-xl bg-ink px-6 py-3.5 font-semibold text-bg transition-colors hover:bg-ink/85"
+      >
+        Free subcontractor sign up
+      </Link>
+    </div>
+    </div>
+    </>
   );
 }
