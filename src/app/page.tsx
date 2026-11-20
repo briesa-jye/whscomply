@@ -73,8 +73,8 @@ export default function WhsHome() {
               data-load
               className="mt-6 font-display text-[clamp(2.7rem,6.4vw,5.5rem)] font-extrabold leading-[0.98] tracking-tight"
             >
-              Every worker on site, <span className="tape">cleared</span> before
-              they pick up a tool.
+              Know who&apos;s <span className="tape">cleared</span> before the
+              gate opens.
             </h1>
             <p data-load className="mt-7 max-w-lg text-lg text-ink-soft">
               WHSCOMPLY keeps your sites compliant with the WHS Act: SWMS,
