@@ -23,7 +23,7 @@ export default function Image() {
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ fontSize: 84, fontWeight: 800, lineHeight: 1.02 }}>
-          Every worker on site, cleared before they pick up a tool.
+          Know who&apos;s cleared before the gate opens.
         </div>
         <div style={{ marginTop: 28, fontSize: 34, color: "#5a6270" }}>
           WHS compliance software for Australian builders
