@@ -263,7 +263,7 @@ export type AuditArea =
   | "Chemicals"
   | "Emergency"
   | "Visitors"
-  | "Consultation"
+  | "Meetings"
   | "Documents"
   | "Diary"
   | "Inductions"

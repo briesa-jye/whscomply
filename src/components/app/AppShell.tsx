@@ -19,15 +19,14 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
       { href: "/dashboard", label: "Dashboard", icon: "grid" },
       { href: "/dashboard/assistant", label: "Assistance", icon: "sparkle" },
       { href: "/dashboard/ai", label: "AI toolkit", icon: "list" },
-      { href: "/dashboard/reports", label: "Reports", icon: "scale" },
-      { href: "/dashboard/iso-vault", label: "ISO Vault", icon: "shield" },
     ],
   },
   {
-    label: "Site management",
+    label: "Project management",
     items: [
-      { href: "/dashboard/diary", label: "Site diary", icon: "book" },
+      { href: "/dashboard/projects", label: "Projects", icon: "building" },
       { href: "/dashboard/programme", label: "Programme", icon: "calendar" },
+      { href: "/dashboard/diary", label: "Site diary", icon: "book" },
       { href: "/dashboard/drawings", label: "Drawings", icon: "file" },
       { href: "/dashboard/rfis", label: "RFIs", icon: "list" },
       { href: "/dashboard/defects", label: "Defects", icon: "pencil" },
@@ -36,12 +35,30 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
     ],
   },
   {
+    label: "Site access",
+    items: [
+      { href: "/dashboard/inductions", label: "Inductions", icon: "user" },
+      { href: "/dashboard/visitors", label: "Visitors", icon: "user" },
+    ],
+  },
+  {
+    label: "Personnel",
+    items: [
+      { href: "/dashboard/people", label: "Workers and tickets", icon: "id" },
+      { href: "/dashboard/training", label: "Training matrix", icon: "list" },
+      {
+        href: "/dashboard/subcontractors",
+        label: "Subcontractors",
+        icon: "store",
+      },
+    ],
+  },
+  {
     label: "Site safety",
     items: [
       { href: "/dashboard/swms", label: "SWMS", icon: "file" },
       { href: "/dashboard/permits", label: "Permits to work", icon: "lock" },
       { href: "/dashboard/risks", label: "Risk register", icon: "alert" },
-      { href: "/dashboard/toolbox", label: "Toolbox talks", icon: "users" },
       {
         href: "/dashboard/inspections",
         label: "Inspections",
@@ -49,48 +66,43 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
       },
       { href: "/dashboard/incidents", label: "Incidents", icon: "shield" },
       { href: "/dashboard/actions", label: "Actions", icon: "check" },
-    ],
-  },
-  {
-    label: "Plant and materials",
-    items: [
-      {
-        href: "/dashboard/plant",
-        label: "Plant and equipment",
-        icon: "settings",
-      },
-      {
-        href: "/dashboard/chemicals",
-        label: "Hazardous chemicals",
-        icon: "flag",
-      },
       { href: "/dashboard/emergency", label: "Emergency", icon: "bell" },
     ],
   },
   {
-    label: "People",
+    label: "Meetings",
     items: [
-      { href: "/dashboard/people", label: "Workers and tickets", icon: "id" },
-      { href: "/dashboard/inductions", label: "Inductions", icon: "user" },
-      { href: "/dashboard/training", label: "Training matrix", icon: "list" },
+      { href: "/dashboard/prestart", label: "Pre-start", icon: "clipboard" },
+      { href: "/dashboard/toolbox", label: "Toolbox talks", icon: "users" },
       {
-        href: "/dashboard/subcontractors",
-        label: "Subcontractors",
-        icon: "store",
+        href: "/dashboard/consultation",
+        label: "WHS Meetings",
+        icon: "calendar",
       },
-      { href: "/dashboard/visitors", label: "Visitors", icon: "user" },
     ],
   },
   {
-    label: "Business",
+    label: "Plant and equipment",
+    items: [
+      { href: "/dashboard/plant", label: "Plant register", icon: "settings" },
+    ],
+  },
+  {
+    label: "Hazardous chemicals",
     items: [
       {
-        href: "/dashboard/consultation",
-        label: "Consultation",
-        icon: "calendar",
+        href: "/dashboard/chemicals",
+        label: "Chemical register",
+        icon: "flag",
       },
+    ],
+  },
+  {
+    label: "Compliance and records",
+    items: [
+      { href: "/dashboard/reports", label: "Reports", icon: "scale" },
+      { href: "/dashboard/iso-vault", label: "ISO Vault", icon: "shield" },
       { href: "/dashboard/documents", label: "Documents", icon: "book" },
-      { href: "/dashboard/projects", label: "Projects", icon: "building" },
       { href: "/dashboard/audit", label: "Audit log", icon: "clock" },
     ],
   },

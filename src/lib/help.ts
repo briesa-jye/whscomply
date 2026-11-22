@@ -34,12 +34,15 @@ export const HELP: HelpArticle[] = [
     open: { href: "/dashboard", label: "Open the dashboard" },
     body: `## The sidebar
 The menu on the left holds every module, in groups:
-- **Dashboard, Assistance, AI toolkit and Reports** at the top.
-- **Site management**: the site diary, programme, drawings, RFIs, defects, photos and site notices.
-- **Site safety**: SWMS, permits to work, the risk register, toolbox talks, inspections, incidents and actions.
-- **Plant and materials**: plant and equipment, hazardous chemicals and emergency management.
-- **People**: workers and tickets, inductions, the training matrix, subcontractors and visitors.
-- **Business**: consultation, documents, projects and the audit log.
+- **Dashboard, Assistance and AI toolkit** at the top.
+- **Project management**: projects, the programme, site diary, drawings, RFIs, defects, photos and site notices.
+- **Site access**: inductions and visitors.
+- **Personnel**: workers and tickets, the training matrix and subcontractors.
+- **Site safety**: SWMS, permits to work, the risk register, inspections, incidents, actions and emergency management.
+- **Meetings**: pre-starts, toolbox talks and WHS meetings.
+- **Plant and equipment**: the plant register.
+- **Hazardous chemicals**: the chemical register.
+- **Compliance and records**: reports, the ISO Vault, documents and the audit log.
 
 The list scrolls if your screen is short. On a phone, tap the menu button at the top left to open it.
 
@@ -196,7 +199,7 @@ Choose **Schedule talk**, pick the topic and the project and say who presents. E
 Open the talk and tick each person who attended. Attendance shows as a count and a bar.
 
 ## Other meetings
-**Consultation** holds WHS committee meetings, pre-starts and coordination meetings, and works the same way.`,
+**Pre-start** holds the daily briefing before work starts. **WHS Meetings** holds WHS committee and coordination meetings. Both work the same way as toolbox talks.`,
   },
   {
     id: "inspections",

@@ -1049,7 +1049,7 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
         talks: [{ ...i, id, expected, attended: [] }, ...s.talks],
       }),
       ev(
-        i.kind && i.kind !== "Toolbox talk" ? "Consultation" : "Toolbox",
+        i.kind && i.kind !== "Toolbox talk" ? "Meetings" : "Toolbox",
         i.projectId,
         `scheduled the ${(i.kind ?? "Toolbox talk").toLowerCase()} ${i.topic}`,
         "Not scheduled",

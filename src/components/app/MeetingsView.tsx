@@ -179,7 +179,7 @@ export function MeetingsView({
                         <button
                           type="button"
                           onClick={() =>
-                            window.confirm("Delete this toolbox talk?") &&
+                            window.confirm("Delete this meeting record?") &&
                             s.removeTalk(t.id)
                           }
                           className="text-xs font-semibold text-ink-soft underline hover:text-ink"

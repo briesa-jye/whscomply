@@ -192,10 +192,16 @@ const PAGES: { title: string; href: string; icon: IconName; words: string }[] =
       words: "sign in out",
     },
     {
-      title: "Consultation",
+      title: "Pre-start",
+      href: "/dashboard/prestart",
+      icon: "clipboard",
+      words: "daily briefing prestart meeting attendance",
+    },
+    {
+      title: "WHS Meetings",
       href: "/dashboard/consultation",
       icon: "calendar",
-      words: "whs committee meeting pre-start",
+      words: "whs committee coordination meeting consultation",
     },
     {
       title: "Documents",
@@ -447,7 +453,9 @@ export function GlobalSearch({
         href:
           (t.kind ?? "Toolbox talk") === "Toolbox talk"
             ? "/dashboard/toolbox"
-            : "/dashboard/consultation",
+            : t.kind === "Pre-start meeting"
+              ? "/dashboard/prestart"
+              : "/dashboard/consultation",
         text: `${t.topic} ${t.kind ?? "Toolbox talk"} ${t.presenter} ${t.notes} ${pn(t.projectId)}`,
       });
 

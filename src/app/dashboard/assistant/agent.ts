@@ -940,7 +940,9 @@ export async function executeTool(
             path:
               kind === "Toolbox talk"
                 ? "/dashboard/toolbox"
-                : "/dashboard/consultation",
+                : kind === "Pre-start meeting"
+                  ? "/dashboard/prestart"
+                  : "/dashboard/consultation",
             label: "Open it",
           },
         };
