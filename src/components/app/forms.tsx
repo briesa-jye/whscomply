@@ -8,11 +8,9 @@ import {
   INSPECTION_TEMPLATES,
   LIKELIHOOD,
   RISK_CATEGORIES,
-  TALK_TOPICS,
   TICKET_KINDS,
   rating,
   type IncidentType,
-  type MeetingKind,
   type ProjectStatus,
   type RiskLevel,
 } from "@/lib/data";
@@ -24,7 +22,6 @@ import type {
   ScanNotes,
   ScanResult,
   SwmsDraft,
-  TalkDraft,
 } from "@/lib/ai-types";
 import {
   AI_NOTE,
@@ -36,7 +33,6 @@ import {
   Sparkle,
   TextTools,
   useAi,
-  useAiContext,
   VoiceButton,
 } from "./ai";
 import { Icon } from "../Icons";
@@ -688,143 +684,6 @@ export function RiskForm({
 }
 
 /* ---------- toolbox talks ---------- */
-
-export function TalkForm({
-  onClose,
-  kinds = ["Toolbox talk"],
-}: {
-  onClose: () => void;
-  kinds?: MeetingKind[];
-}) {
-  const { addTalk } = useScope();
-  const ai = useAi();
-  const context = useAiContext();
-  const [topic, setTopic] = useState("");
-  const [notes, setNotes] = useState("");
-  const single = kinds.length === 1;
-  const noun = single ? kinds[0].toLowerCase() : "meeting";
-
-  const draft = async () => {
-    const r = await ai.run<TalkDraft>("talk", { topic, context: context() });
-    if (!r) return;
-    if (r.topic && !topic.trim()) setTopic(r.topic);
-    setNotes(r.notes);
-  };
-
-  return (
-    <Shell
-      title={`Schedule a ${noun}`}
-      sub="Everyone assigned to the project is added to the attendance list"
-      onClose={onClose}
-    >
-      <form
-        onSubmit={(e) => {
-          const g = fd(e);
-          addTalk({
-            kind: (g("kind") || kinds[0]) as MeetingKind,
-            projectId: g("projectId"),
-            topic: g("topic"),
-            date: g("date"),
-            presenter: g("presenter"),
-            notes,
-          });
-          onClose();
-        }}
-        className="grid gap-4 sm:grid-cols-2"
-      >
-        {!single && (
-          <Field label="Type" className="sm:col-span-2">
-            <select name="kind" defaultValue={kinds[0]} className={field}>
-              {kinds.map((k) => (
-                <option key={k}>{k}</option>
-              ))}
-            </select>
-          </Field>
-        )}
-        <Field label={single ? "Topic" : "Subject"} className="sm:col-span-2">
-          <input
-            name="topic"
-            required
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            list={single ? "talk-topics" : undefined}
-            className={field}
-            placeholder={
-              single
-                ? "Choose or type a topic"
-                : "Monthly WHS committee meeting"
-            }
-          />
-          <datalist id="talk-topics">
-            {TALK_TOPICS.map((t) => (
-              <option key={t} value={t} />
-            ))}
-          </datalist>
-        </Field>
-        <ProjectField />
-        <Field label="Date">
-          <input
-            name="date"
-            type="date"
-            required
-            defaultValue={todayISO()}
-            className={field}
-          />
-        </Field>
-        <Field label={single ? "Presenter" : "Chair"} className="sm:col-span-2">
-          <input
-            name="presenter"
-            required
-            defaultValue="Sam Kowalski"
-            className={field}
-          />
-        </Field>
-        <div className="sm:col-span-2">
-          <div className="mb-2 flex flex-wrap items-center gap-3 rounded-2xl border border-accent/40 bg-accent/[0.07] px-4 py-3">
-            <Sparkle />
-            <p className="min-w-0 flex-1 text-xs text-ink-soft">
-              {single
-                ? "Write the talk from the topic and what has happened on this project recently."
-                : "Draft an agenda from the topic and recent site events."}{" "}
-              {AI_NOTE}
-            </p>
-            <button
-              type="button"
-              disabled={ai.busy || topic.trim().length < 3}
-              onClick={() => void draft()}
-              className={aiBtn}
-            >
-              Draft
-            </button>
-            {ai.busy && <Busy label="Writing" />}
-          </div>
-          <AiProblem problem={ai.problem} />
-          <Field
-            label={single ? "Key points" : "Agenda"}
-            hint="optional"
-            className="mt-3"
-          >
-            <textarea
-              name="notes"
-              rows={notes ? 9 : 3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className={field}
-            />
-          </Field>
-          <div className="mt-2">
-            <TextTools value={notes} onChange={setNotes} />
-          </div>
-        </div>
-        <div className="sm:col-span-2">
-          <Actions onClose={onClose} submit="Schedule" />
-        </div>
-      </form>
-    </Shell>
-  );
-}
-
-/* ---------- inspections ---------- */
 
 export function InspectionStartForm({
   onClose,

@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@/components/Icons";
 import { useScope } from "@/components/app/DemoStore";
-import { TalkForm } from "@/components/app/forms";
 import {
-  Avatar,
   btnDark,
+  btnLight,
   Card,
   Chips,
   EmptyState,
@@ -14,39 +14,66 @@ import {
   Pill,
   Progress,
 } from "@/components/app/ui";
-import { daysUntil, type MeetingKind } from "@/lib/data";
-import { fmtDate } from "@/lib/format";
+import {
+  meetingDue,
+  meetingStatus,
+  type MeetingKind,
+} from "@/lib/data";
+import { fmtDate, todayISO } from "@/lib/format";
 
-const FILTERS = ["All", "Upcoming", "Held"] as const;
+const FILTERS = [
+  "All",
+  "Due and upcoming",
+  "In progress",
+  "Completed",
+] as const;
 
+const hhmm = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+/**
+ * The list for one kind of meeting. Creating or running one happens on its own page:
+ * `${base}/new` to start now or schedule, `${base}/[id]` to run or review it.
+ */
 export function MeetingsView({
   kinds,
+  base,
   title,
   sub,
-  addLabel,
+  noun,
   emptyTitle,
   emptyBody,
 }: {
   kinds: MeetingKind[];
+  base: string;
   title: string;
   sub: string;
-  addLabel: string;
+  /** what one is called in buttons, such as "pre-start" or "toolbox talk" */
+  noun: string;
   emptyTitle: string;
   emptyBody: string;
 }) {
   const s = useScope();
   const [f, setF] = useState<(typeof FILTERS)[number]>("All");
-  const [open, setOpen] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  const today = todayISO();
+  const now = hhmm();
 
   const list = s.talksIn
     .filter((t) => kinds.includes(t.kind ?? "Toolbox talk"))
-    .filter(
-      (t) =>
+    .filter((t) => {
+      const st = meetingStatus(t);
+      return (
         f === "All" ||
-        (f === "Upcoming" ? daysUntil(t.date) >= 0 : daysUntil(t.date) < 0),
-    )
-    .sort((a, b) => b.date.localeCompare(a.date));
+        (f === "Due and upcoming" && st === "Scheduled") ||
+        (f === "In progress" && st === "In progress") ||
+        (f === "Completed" && st === "Completed")
+      );
+    })
+    .sort((a, b) =>
+      `${b.date} ${b.time ?? ""}`.localeCompare(`${a.date} ${a.time ?? ""}`),
+    );
 
   return (
     <>
@@ -54,13 +81,17 @@ export function MeetingsView({
         title={title}
         sub={sub}
         actions={
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className={btnDark}
-          >
-            <Icon name="plus" className="h-4 w-4" /> {addLabel}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`${base}/new`} className={btnDark}>
+              <Icon name="plus" className="h-4 w-4" /> Start {noun} now
+            </Link>
+            <Link href={`${base}/new?when=later`} className={btnLight}>
+              Schedule for later
+            </Link>
+            <Link href={`${base}/template`} className={btnLight}>
+              Customise template
+            </Link>
+          </div>
         }
       />
 
@@ -76,21 +107,21 @@ export function MeetingsView({
         ) : (
           <ul>
             {list.map((t) => {
-              const d = daysUntil(t.date);
-              const isOpen = open === t.id;
-              const crew = t.expected
-                .map((id) => s.workers.find((w) => w.id === id))
-                .filter((w): w is NonNullable<typeof w> => !!w);
-              const pct = crew.length
-                ? Math.round((t.attended.length / crew.length) * 100)
-                : 0;
+              const st = meetingStatus(t);
+              const due = meetingDue(t, today, now);
+              const signed = (t.signatures ?? []).length;
+              const legacy = t.signatures === undefined;
+              const total = Math.max(
+                t.expected.length,
+                legacy ? t.attended.length : signed,
+              );
+              const count = legacy ? t.attended.length : signed;
+              const pct = total ? Math.round((count / total) * 100) : 0;
               return (
                 <li key={t.id} className="border-b border-line last:border-0">
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    onClick={() => setOpen(isOpen ? null : t.id)}
-                    className="grid w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-tint/60 md:grid-cols-[1.6fr_1fr_1fr_auto]"
+                  <Link
+                    href={`${base}/${t.id}`}
+                    className="grid items-center gap-3 px-5 py-4 transition-colors hover:bg-tint/60 md:grid-cols-[1.6fr_1fr_1fr_auto]"
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-semibold">
@@ -99,23 +130,29 @@ export function MeetingsView({
                       <span className="block truncate text-xs text-ink-soft">
                         {s.all &&
                           `${s.projects.find((p) => p.id === t.projectId)?.name} · `}
-                        {fmtDate(t.date)} · {t.presenter}
+                        {fmtDate(t.date)}
+                        {t.time ? ` ${t.time}` : ""} · {t.presenter}
+                        {t.spontaneous && " · started on the spot"}
                       </span>
                     </span>
                     <span>
-                      <Pill tone={d >= 0 ? "neutral" : "ok"}>
-                        {d > 0
-                          ? `In ${d} day${d === 1 ? "" : "s"}`
-                          : d === 0
-                            ? "Today"
-                            : "Held"}
+                      <Pill
+                        tone={
+                          due ? "owed" : st === "Completed" ? "ok" : "neutral"
+                        }
+                      >
+                        {due
+                          ? "Due now"
+                          : st === "Scheduled"
+                            ? "Scheduled"
+                            : st}
                       </Pill>
                     </span>
                     <span className="min-w-0">
                       <span className="mb-1 flex justify-between text-xs text-ink-soft">
-                        <span>Attended</span>
+                        <span>{legacy ? "Attended" : "Signed"}</span>
                         <span className="tabular-nums">
-                          {t.attended.length}/{crew.length}
+                          {count}/{total}
                         </span>
                       </span>
                       <Progress
@@ -123,80 +160,17 @@ export function MeetingsView({
                         tone={pct === 100 ? "ink" : "accent"}
                       />
                     </span>
-                    <Icon
-                      name="arrow"
-                      className={`h-4 w-4 justify-self-end text-ink-soft transition-transform ${isOpen ? "rotate-90" : ""}`}
-                    />
-                  </button>
-
-                  {isOpen && (
-                    <div className="border-t border-line bg-bg px-5 py-4">
-                      {t.notes && (
-                        <p className="mb-4 text-sm text-ink-soft">{t.notes}</p>
-                      )}
-                      <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-ink-soft">
-                        Attendance
-                      </p>
-                      <ul className="grid gap-2 sm:grid-cols-2">
-                        {crew.map((w, i) => {
-                          const here = t.attended.includes(w.id);
-                          return (
-                            <li key={w.id}>
-                              <button
-                                type="button"
-                                aria-pressed={here}
-                                onClick={() => s.toggleAttendance(t.id, w.id)}
-                                className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left ${here ? "border-ink bg-surface" : "border-line bg-surface hover:border-ink-soft"}`}
-                              >
-                                <span
-                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.5px] ${here ? "border-ink bg-ink text-bg" : "border-ink-soft/50"}`}
-                                >
-                                  {here && (
-                                    <Icon name="check" className="h-3 w-3" />
-                                  )}
-                                </span>
-                                <Avatar
-                                  initials={w.name
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")}
-                                  tone={(i % 3) as 0 | 1 | 2}
-                                />
-                                <span className="min-w-0">
-                                  <span className="block truncate text-sm font-semibold">
-                                    {w.name}
-                                  </span>
-                                  <span className="block truncate text-xs text-ink-soft">
-                                    {w.role}
-                                  </span>
-                                </span>
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                      <div className="mt-4 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            window.confirm("Delete this toolbox talk?") &&
-                            s.removeTalk(t.id)
-                          }
-                          className="text-xs font-semibold text-ink-soft underline hover:text-ink"
-                        >
-                          Delete record
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                    <span className="flex items-center justify-self-end gap-2 text-xs font-semibold">
+                      {due ? "Start" : st === "In progress" ? "Continue" : ""}
+                      <Icon name="arrow" className="h-4 w-4 text-ink-soft" />
+                    </span>
+                  </Link>
                 </li>
               );
             })}
           </ul>
         )}
       </Card>
-
-      {adding && <TalkForm kinds={kinds} onClose={() => setAdding(false)} />}
     </>
   );
 }

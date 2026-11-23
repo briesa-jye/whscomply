@@ -91,7 +91,7 @@ const GROUPS: { label: string; blurb: string; tools: Tool[] }[] = [
       {
         name: "Toolbox talk writer",
         body: "Give it a topic and it writes a five minute talk with key points and questions, drawing on what has actually happened on your project recently.",
-        where: "Toolbox talks, Consultation",
+        where: "Toolbox talks, Pre-start, WHS Meetings",
         href: "/dashboard/toolbox",
         icon: "users",
       },

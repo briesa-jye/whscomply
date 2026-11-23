@@ -34,12 +34,14 @@ export const HELP: HelpArticle[] = [
     open: { href: "/dashboard", label: "Open the dashboard" },
     body: `## The sidebar
 The menu on the left holds every module, in groups:
-- **Dashboard, Assistance, AI toolkit and Reports** at the top.
-- **Site management**: the site diary, programme, drawings, RFIs, defects, photos and site notices.
-- **Site safety**: SWMS, permits to work, the risk register, toolbox talks, inspections, incidents and actions.
-- **Plant and materials**: plant and equipment, hazardous chemicals and emergency management.
-- **People**: workers and tickets, inductions, the training matrix, subcontractors and visitors.
-- **Business**: consultation, documents, projects and the audit log.
+- **Dashboard, Assistance and AI toolkit** at the top.
+- **Project management**: projects, the programme, site diary, drawings, RFIs, defects, photos and site notices. Open a project to find its **Site access** tab: induction approvals, worker sign in and out, and visitors.
+- **Personnel**: workers and tickets, the training matrix and subcontractors.
+- **Site safety**: SWMS, permits to work, the risk register, inspections, incidents, actions and emergency management.
+- **Meetings**: pre-starts, toolbox talks and WHS meetings.
+- **Plant and equipment**: the plant register.
+- **Hazardous chemicals**: the chemical register.
+- **Compliance and records**: reports, the ISO Vault, documents and the audit log.
 
 The list scrolls if your screen is short. On a phone, tap the menu button at the top left to open it.
 
@@ -187,16 +189,24 @@ Choose **Spot hazards in a photo**, add a picture of the work area, and the AI l
     title: "Toolbox talks and meetings",
     category: "Site safety",
     icon: "users",
-    summary: "Schedule briefings and record who attended.",
+    summary: "Start or schedule a briefing, then everyone signs.",
     open: { href: "/dashboard/toolbox", label: "Open toolbox talks" },
-    body: `## Schedule a talk
-Choose **Schedule talk**, pick the topic and the project and say who presents. Everyone assigned to the project is added to the attendance list. Choose **Draft** to have the AI write the key points, drawing on what has happened on the project recently.
+    body: `## Start now or schedule it
+Choose **Start toolbox talk now** when a briefing happens on the spot, or **Schedule for later** to set a day and time. Each opens its own page rather than a pop-up. Pick the project, the template and who presents. Choose **Draft** to have the AI write the key points from what has happened on the project recently.
 
-## Record attendance
-Open the talk and tick each person who attended. Attendance shows as a count and a bar.
+Scheduled ones appear in your needs-action list when their day and time arrive. Open it and choose **Start now**.
+
+## Complete the form
+Fill in your template: tick boxes, yes/no answers, written answers and numbers. Items marked * are required.
+
+## Attendance and signatures
+Everyone assigned to the project is on the list, and you can add anyone else from the project. Each attendee is linked to their own profile and signs by drawing their signature. Choose **Sign on this device** to hand over the screen, or **Send to their profile** so they sign from their own WHSCOMPLY profile. When you choose **Complete**, any listed person who has not signed is recorded as not attending.
+
+## Your templates
+Choose **Customise template** to decide what is recorded. Add sections and items, mark items required, add several templates and pick a default. A record keeps the template as it was when it started, so changing a template never rewrites past records.
 
 ## Other meetings
-**Consultation** holds WHS committee meetings, pre-starts and coordination meetings, and works the same way.`,
+**Pre-start** holds the daily briefing before work starts. **WHS Meetings** holds WHS committee and coordination meetings. Both work the same way as toolbox talks.`,
   },
   {
     id: "inspections",
@@ -384,19 +394,24 @@ Tickets that expire within your warning window show as expiring, and expired one
   },
   {
     id: "inductions",
-    title: "Site inductions and the gate",
+    title: "Site access, inductions and the gate",
     category: "People",
     icon: "user",
-    summary: "Induct workers to a site and sign them on and off.",
-    open: { href: "/dashboard/inductions", label: "Open inductions" },
-    body: `## Induction content
+    summary: "Approve contractor workers, induct them and sign them on and off.",
+    open: { href: "/dashboard/projects", label: "Open projects" },
+    body: `Open a project from **Projects** and choose its **Site access** tab.
+
+## Contractor access requests
+A subcontractor asks for each worker through its portal. The request appears here. **Approve** is available once the subcontractor is approved, the worker has a white card on file and no ticket has expired. **Decline** needs a reason, which the subcontractor sees.
+
+## Induction content
 Each project has its own list of induction topics. Choose **Edit** to add topics specific to that site, or remove any you do not need.
 
 ## Inducting a worker
-Choose **Induct** next to a worker who is waiting. They tick each topic and type their full name to sign. The record shows who inducted them and when.
+Choose **Review and induct** next to a worker who is waiting. They tick each topic and type their full name to sign. The record shows who inducted them and when.
 
 ## Signing on and off
-On **Projects**, each project has a gate list. **Sign on** is available once a worker is inducted and has no expired ticket. **Sign off** when they leave. The dashboard and the diary show who is on site.`,
+**Sign on** is available once a worker is inducted, has a white card and has no expired ticket. **Sign off** when they leave. Each sign on and off is logged with the time, and the dashboard and the diary show who is on site.`,
   },
   {
     id: "subcontractors",
@@ -423,8 +438,8 @@ Add insurances, workers' compensation and licences with their expiry dates, and 
     category: "People",
     icon: "user",
     summary: "Sign visitors in and out and know who is on site.",
-    open: { href: "/dashboard/visitors", label: "Open visitors" },
-    body: `Choose **Sign in visitor**, enter who they are, their company, why they are here and who is hosting them. Say whether they have had a visitor induction: if not, they must be escorted at all times.
+    open: { href: "/dashboard/projects", label: "Open projects" },
+    body: `Open a project and choose its **Site access** tab. Choose **Sign in visitor**, enter who they are, their company, why they are here and who is hosting them. Say whether they have had a visitor induction: if not, they must be escorted at all times.
 
 Choose **Sign out** when they leave. A visitor who is still signed in from an earlier day is flagged.`,
   },

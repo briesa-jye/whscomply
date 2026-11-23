@@ -2,12 +2,16 @@ import { todayISO } from "./format";
 import {
   daysUntil,
   expiryOf,
+  meetingDue,
+  meetingHref,
+  meetingStatus,
   type Action,
   type Chemical,
   type Defect,
   type Inspection,
   type InspectionSchedule,
   type Rfi,
+  type SiteRequest,
   type Doc,
   type Drill,
   type Permit,
@@ -41,7 +45,8 @@ export type Attention = {
     | "defect"
     | "rfi"
     | "inspection"
-    | "invite";
+    | "invite"
+    | "request";
   title: string;
   where: string;
   due: string;
@@ -79,6 +84,7 @@ type Input = {
   rfis: Rfi[];
   schedules: InspectionSchedule[];
   inspections: Inspection[];
+  requests: SiteRequest[];
   warnDays: number;
   notify: {
     tickets: boolean;
@@ -87,6 +93,7 @@ type Input = {
     incidents: boolean;
   };
   projectName: (id: string) => string;
+  workerName: (id: string) => string;
 };
 
 const ini = (n: string) =>
@@ -215,18 +222,37 @@ export function attentionFor(i: Input): Attention[] {
       });
     }
 
+  const clock = new Date();
+  const hm = `${String(clock.getHours()).padStart(2, "0")}:${String(clock.getMinutes()).padStart(2, "0")}`;
   for (const t of i.talks) {
+    const st = meetingStatus(t);
+    if (st === "Completed") continue;
     const d = daysUntil(t.date);
-    if (d < 0 || d > 7) continue;
+    const due = meetingDue(t, todayISO(), hm);
+    if (st === "Scheduled" && !due && d > 7) continue;
+    const kind = t.kind ?? "Toolbox talk";
     out.push({
       id: `tb-${t.id}`,
       kind: "talk",
-      title: `Toolbox talk: ${t.topic}`,
+      title:
+        st === "In progress"
+          ? `Finish ${kind.toLowerCase()}: ${t.topic}`
+          : `${kind}: ${t.topic}`,
       where: i.projectName(t.projectId),
-      due: dueText(d),
-      href: "/dashboard/toolbox",
-      tone: "neutral",
-      rank: d + 2,
+      due:
+        st === "In progress"
+          ? "In progress, waiting to be completed"
+          : due
+            ? d < 0
+              ? dueText(d)
+              : "Due now, start it"
+            : d === 0
+              ? `Today ${t.time ?? ""}`.trim()
+              : dueText(d),
+      href: meetingHref(t),
+      tone: due ? "owed" : "neutral",
+      // a briefing that is due, or running, comes before older overdue items
+      rank: due ? -1000 + Math.min(d, 0) : st === "In progress" ? -500 : d + 2,
       who: ini(t.presenter),
       projectId: t.projectId,
     });
@@ -378,6 +404,22 @@ export function attentionFor(i: Input): Attention[] {
     });
   }
 
+  for (const r of i.requests) {
+    if (r.status !== "Pending") continue;
+    out.push({
+      id: `sr-${r.id}`,
+      kind: "request",
+      title: `Site access request: ${i.workerName(r.workerId)}`,
+      where: i.projectName(r.projectId),
+      due: "Waiting for approval",
+      href: `/dashboard/projects/${r.projectId}`,
+      tone: "owed",
+      rank: 0,
+      who: ini(i.workerName(r.workerId)),
+      projectId: r.projectId,
+    });
+  }
+
   for (const v of i.visitors) {
     if (v.outAt || v.inAt.slice(0, 10) >= todayISO()) continue;
     out.push({
@@ -386,7 +428,7 @@ export function attentionFor(i: Input): Attention[] {
       title: `Visitor never signed out: ${v.name}`,
       where: i.projectName(v.projectId),
       due: "Signed in on an earlier day",
-      href: "/dashboard/visitors",
+      href: `/dashboard/projects/${v.projectId}`,
       tone: "owed",
       rank: -1,
       who: ini(v.name),

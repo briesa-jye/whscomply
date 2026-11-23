@@ -28,7 +28,7 @@ const AREAS: ("All" | AuditArea)[] = [
   "Chemicals",
   "Emergency",
   "Visitors",
-  "Consultation",
+  "Meetings",
   "Documents",
   "Diary",
   "Inductions",

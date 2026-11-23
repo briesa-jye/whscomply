@@ -7,7 +7,6 @@ import { Icon } from "@/components/Icons";
 import { ALL, useScope } from "@/components/app/DemoStore";
 import { ProjectForm } from "@/components/app/forms";
 import {
-  Avatar,
   btnDark,
   btnLight,
   Card,
@@ -66,13 +65,27 @@ export default function ProjectsPage() {
             const lapsed = crew.filter((w) =>
               w.tickets.some((t) => expiryOf(t.expires, 0) === "expired"),
             ).length;
+            const visitorsOn = s.visitors.filter(
+              (v) => v.projectId === p.id && !v.outAt,
+            ).length;
+            const awaiting = crew.filter(
+              (w) => !w.inducted.includes(p.id),
+            ).length;
+            const requestsOpen = s.siteRequests.filter(
+              (r) => r.projectId === p.id && r.status === "Pending",
+            ).length;
             const selected = s.projectId === p.id;
             return (
               <Card key={p.id} className={selected ? "ring-2 ring-accent" : ""}>
                 <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
                   <div className="min-w-0">
                     <h2 className="truncate font-display text-lg font-extrabold tracking-tight">
-                      {p.name}
+                      <Link
+                        href={`/dashboard/projects/${p.id}`}
+                        className="hover:underline"
+                      >
+                        {p.name}
+                      </Link>
                     </h2>
                     <p className="truncate text-xs text-ink-soft">
                       {p.address}
@@ -156,84 +169,25 @@ export default function ProjectsPage() {
                   </div>
                 </div>
 
-                <div className="px-5 pb-1 pt-4">
-                  <p className="font-mono text-[11px] uppercase tracking-widest text-ink-soft">
-                    Gate: sign workers on and off
+                <div className="px-5 pb-4 pt-4">
+                  <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-ink-soft">
+                    Site access
                   </p>
+                  <p className="text-sm text-ink-soft">
+                    {p.onSite.length} worker{p.onSite.length === 1 ? "" : "s"} and{" "}
+                    {visitorsOn} visitor{visitorsOn === 1 ? "" : "s"} on site
+                    {awaiting > 0 && ` · ${awaiting} awaiting induction`}
+                    {requestsOpen > 0 &&
+                      ` · ${requestsOpen} access request${requestsOpen === 1 ? "" : "s"} to review`}
+                  </p>
+                  <Link
+                    href={`/dashboard/projects/${p.id}`}
+                    className={`${btnLight} mt-3 !px-3 !py-1.5 text-xs`}
+                  >
+                    Manage site access
+                  </Link>
                 </div>
-                <ul className="px-2 pb-3">
-                  {crew.length === 0 && (
-                    <li className="px-3 py-3 text-sm text-ink-soft">
-                      No workers assigned yet.
-                    </li>
-                  )}
-                  {crew.map((w, i) => {
-                    const on = p.onSite.includes(w.id);
-                    const bad = w.tickets.some(
-                      (t) => expiryOf(t.expires, 0) === "expired",
-                    );
-                    const inducted = w.inducted.includes(p.id);
-                    return (
-                      <li
-                        key={w.id}
-                        className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-tint/60"
-                      >
-                        <Avatar
-                          initials={w.name
-                            .split(" ")
-                            .map((x) => x[0])
-                            .join("")}
-                          tone={(i % 3) as 0 | 1 | 2}
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-semibold">
-                            {w.name}
-                          </span>
-                          <span className="block truncate text-xs text-ink-soft">
-                            {w.role}
-                            {!inducted && " · not inducted"}
-                            {bad && " · expired ticket"}
-                          </span>
-                        </span>
-                        {on ? (
-                          <button
-                            type="button"
-                            onClick={() => s.signOff(p.id, w.id)}
-                            className={`${btnLight} !px-3 !py-1.5 text-xs`}
-                          >
-                            Sign off
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={bad || !inducted}
-                            title={
-                              bad
-                                ? "Expired ticket"
-                                : !inducted
-                                  ? "Needs a site induction first"
-                                  : ""
-                            }
-                            onClick={() => s.signOn(p.id, w.id)}
-                            className={`${btnDark} !px-3 !py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40`}
-                          >
-                            Sign on
-                          </button>
-                        )}
-                        {!inducted && (
-                          <button
-                            type="button"
-                            onClick={() => s.induct(w.id, p.id)}
-                            className={`${btnLight} !px-3 !py-1.5 text-xs`}
-                          >
-                            Induct
-                          </button>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-                <div className="flex items-center justify-between border-t border-line bg-bg px-5 py-3">
+                                <div className="flex items-center justify-between border-t border-line bg-bg px-5 py-3">
                   <button
                     type="button"
                     onClick={() => s.setProject(selected ? ALL : p.id)}

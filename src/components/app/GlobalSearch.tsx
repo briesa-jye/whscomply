@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { rating } from "@/lib/data";
+import { meetingHref, rating } from "@/lib/data";
 import { HELP } from "@/lib/help";
 import { fmtDate } from "@/lib/format";
 import { Icon, type IconName } from "../Icons";
@@ -168,10 +168,10 @@ const PAGES: { title: string; href: string; icon: IconName; words: string }[] =
       words: "white card licence expiry crew",
     },
     {
-      title: "Inductions",
-      href: "/dashboard/inductions",
+      title: "Site access",
+      href: "/dashboard/projects",
       icon: "user",
-      words: "site induction sign",
+      words: "induction approval sign on off gate visitor contractor request project",
     },
     {
       title: "Training matrix",
@@ -186,16 +186,16 @@ const PAGES: { title: string; href: string; icon: IconName; words: string }[] =
       words: "prequalification insurance workcover approve",
     },
     {
-      title: "Visitors",
-      href: "/dashboard/visitors",
-      icon: "user",
-      words: "sign in out",
+      title: "Pre-start",
+      href: "/dashboard/prestart",
+      icon: "clipboard",
+      words: "daily briefing prestart meeting attendance",
     },
     {
-      title: "Consultation",
+      title: "WHS Meetings",
       href: "/dashboard/consultation",
       icon: "calendar",
-      words: "whs committee meeting pre-start",
+      words: "whs committee coordination meeting consultation",
     },
     {
       title: "Documents",
@@ -444,10 +444,7 @@ export function GlobalSearch({
         icon: "users",
         title: t.topic,
         sub: `${t.kind ?? "Toolbox talk"} · ${fmtDate(t.date)} · ${pn(t.projectId)}`,
-        href:
-          (t.kind ?? "Toolbox talk") === "Toolbox talk"
-            ? "/dashboard/toolbox"
-            : "/dashboard/consultation",
+        href: meetingHref(t),
         text: `${t.topic} ${t.kind ?? "Toolbox talk"} ${t.presenter} ${t.notes} ${pn(t.projectId)}`,
       });
 
@@ -524,7 +521,7 @@ export function GlobalSearch({
         icon: "user",
         title: v.name,
         sub: `Visitor · ${v.company} · ${pn(v.projectId)}`,
-        href: "/dashboard/visitors",
+        href: `/dashboard/projects/${v.projectId}`,
         text: `${v.name} ${v.company} ${v.purpose} ${v.host} visitor`,
       });
 
