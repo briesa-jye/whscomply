@@ -358,7 +358,14 @@ export function DrillForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function VisitorForm({ onClose }: { onClose: () => void }) {
+export function VisitorForm({
+  onClose,
+  projectId,
+}: {
+  onClose: () => void;
+  /** Fixes the visit to one project, so the form does not ask for it. */
+  projectId?: string;
+}) {
   const { signInVisitor } = useScope();
   return (
     <Shell
@@ -387,7 +394,11 @@ export function VisitorForm({ onClose }: { onClose: () => void }) {
         <Field label="Company">
           <input name="company" required className={field} />
         </Field>
-        <ProjectField />
+        {projectId ? (
+          <input type="hidden" name="projectId" value={projectId} />
+        ) : (
+          <ProjectField />
+        )}
         <Field label="Purpose of visit">
           <input name="purpose" required className={field} />
         </Field>

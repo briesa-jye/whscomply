@@ -35,8 +35,7 @@ export const HELP: HelpArticle[] = [
     body: `## The sidebar
 The menu on the left holds every module, in groups:
 - **Dashboard, Assistance and AI toolkit** at the top.
-- **Project management**: projects, the programme, site diary, drawings, RFIs, defects, photos and site notices.
-- **Site access**: inductions and visitors.
+- **Project management**: projects, the programme, site diary, drawings, RFIs, defects, photos and site notices. Open a project to find its **Site access** tab: induction approvals, worker sign in and out, and visitors.
 - **Personnel**: workers and tickets, the training matrix and subcontractors.
 - **Site safety**: SWMS, permits to work, the risk register, inspections, incidents, actions and emergency management.
 - **Meetings**: pre-starts, toolbox talks and WHS meetings.

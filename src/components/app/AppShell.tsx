@@ -35,13 +35,6 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: "Site access",
-    items: [
-      { href: "/dashboard/inductions", label: "Inductions", icon: "user" },
-      { href: "/dashboard/visitors", label: "Visitors", icon: "user" },
-    ],
-  },
-  {
     label: "Personnel",
     items: [
       { href: "/dashboard/people", label: "Workers and tickets", icon: "id" },

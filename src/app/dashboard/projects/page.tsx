@@ -72,7 +72,12 @@ export default function ProjectsPage() {
                 <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
                   <div className="min-w-0">
                     <h2 className="truncate font-display text-lg font-extrabold tracking-tight">
-                      {p.name}
+                      <Link
+                        href={`/dashboard/projects/${p.id}`}
+                        className="hover:underline"
+                      >
+                        {p.name}
+                      </Link>
                     </h2>
                     <p className="truncate text-xs text-ink-soft">
                       {p.address}
