@@ -6,11 +6,12 @@ export default function ToolboxPage() {
   return (
     <MeetingsView
       kinds={["Toolbox talk"]}
+      base="/dashboard/toolbox"
       title="Toolbox talks"
-      sub="Short briefings on site. Record the topic and tick off who attended, so consultation is on the record."
-      addLabel="Schedule talk"
+      sub="Short briefings on site. Record what was covered and have each person sign, so consultation is on the record."
+      noun="toolbox talk"
       emptyTitle="No toolbox talks yet."
-      emptyBody="Schedule one and the project's crew is added to the attendance list."
+      emptyBody="Start one now or schedule one for later. The project's crew is added to the attendance list."
     />
   );
 }

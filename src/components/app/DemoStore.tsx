@@ -32,6 +32,7 @@ import {
   seedPlant,
   seedVisitors,
   seedGateLog,
+  seedMeetingTemplates,
   seedSiteRequests,
   seedAudit,
   seedIncidents,
@@ -62,6 +63,7 @@ import {
   type Plant,
   type Visitor,
   type GateEvent,
+  type MeetingTemplate,
   type SiteRequest,
   type AuditArea,
   type AuditEvent,
@@ -137,6 +139,8 @@ type Saved = {
   gateLog: GateEvent[];
   /** subcontractors asking for a worker to be allowed onto a project */
   siteRequests: SiteRequest[];
+  /** what each kind of meeting records, edited by the client */
+  meetingTemplates: MeetingTemplate[];
   iso: IsoState;
 };
 
@@ -172,6 +176,7 @@ const SEED: Saved = {
   invites: seedInvites,
   gateLog: seedGateLog,
   siteRequests: seedSiteRequests,
+  meetingTemplates: seedMeetingTemplates,
   iso: {
     profile: {
       company: seedSettings.company.name,
@@ -246,6 +251,7 @@ function migrate(p: Saved): Saved {
     ...p,
     gateLog: p.gateLog ?? [],
     siteRequests: p.siteRequests ?? [],
+    meetingTemplates: p.meetingTemplates ?? seedMeetingTemplates,
   };
 }
 
@@ -302,6 +308,10 @@ const stamp = () => {
   return `${todayISO()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
+/** Audit log area for a kind of meeting. */
+const meetingArea = (kind: MeetingKind): AuditArea =>
+  kind === "Toolbox talk" ? "Toolbox" : "Meetings";
+
 const nowTime = () =>
   new Date().toLocaleTimeString("en-AU", {
     hour: "2-digit",
@@ -323,6 +333,11 @@ function ev(
       ? st.subs.find((x) => x.id === st.settings.subId)
       : undefined;
   const person = sub ? sub.contact || sub.name : "";
+  // Changes made from a worker's own profile are logged under that worker.
+  const wk =
+    st.settings.account === "worker"
+      ? st.workers.find((x) => x.id === st.settings.workerId)
+      : undefined;
   return {
     id: uid(),
     day: "Today",
@@ -333,8 +348,14 @@ function ev(
           .slice(0, 2)
           .map((w) => w[0]?.toUpperCase())
           .join("")
-      : me.initials,
-    name: sub ? `${person} (${sub.name})` : me.name,
+      : wk
+        ? wk.name
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((w) => w[0]?.toUpperCase())
+            .join("")
+        : me.initials,
+    name: sub ? `${person} (${sub.name})` : wk ? wk.name : me.name,
     act,
     from,
     to,
@@ -376,6 +397,20 @@ export type NewSwms = {
   steps: Omit<SwmsStep, "id">[];
 };
 export type NewRisk = Omit<Risk, "id">;
+/** Starting or scheduling a pre-start, toolbox talk or meeting from its own page. */
+export type NewMeeting = {
+  kind: MeetingKind;
+  projectId: string;
+  topic: string;
+  presenter: string;
+  notes: string;
+  templateId: string;
+  /** start straight away rather than scheduling */
+  startNow: boolean;
+  date: string;
+  time?: string;
+};
+
 export type NewTalk = Pick<
   Talk,
   "projectId" | "topic" | "date" | "presenter" | "notes"
@@ -506,6 +541,21 @@ type Store = Saved & {
   toggleAttendance: (id: string, workerId: string) => void;
   updateTalk: (id: string, patch: Partial<Talk>) => void;
   removeTalk: (id: string) => void;
+  createMeeting: (i: NewMeeting) => string;
+  startMeeting: (id: string) => void;
+  addAttendee: (id: string, workerId: string) => void;
+  removeAttendee: (id: string, workerId: string) => void;
+  signMeeting: (
+    id: string,
+    workerId: string,
+    path: string,
+    mode: "device" | "profile",
+  ) => void;
+  sendToProfile: (id: string, workerId: string) => void;
+  completeMeeting: (id: string) => void;
+  saveMeetingTemplate: (t: MeetingTemplate) => void;
+  removeMeetingTemplate: (id: string) => void;
+  setDefaultMeetingTemplate: (id: string) => void;
 
   startInspection: (
     projectId: string,
@@ -1243,6 +1293,210 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     })),
   removeTalk: (id) =>
     update((s) => ({ ...s, talks: s.talks.filter((x) => x.id !== id) })),
+
+  createMeeting: (i) => {
+    const s0 = current();
+    const tpl =
+      s0.meetingTemplates.find((t) => t.id === i.templateId) ??
+      s0.meetingTemplates.find((t) => t.kind === i.kind && t.isDefault);
+    const id = `tb-${uid()}`;
+    const crew = s0.workers
+      .filter((w) => w.projects.includes(i.projectId))
+      .map((w) => w.id);
+    const project = s0.projects.find((p) => p.id === i.projectId);
+    const onSite = crew.filter((w) => project?.onSite.includes(w));
+    const now = stamp();
+    const talk: Talk = {
+      id,
+      projectId: i.projectId,
+      kind: i.kind,
+      topic: i.topic,
+      presenter: i.presenter,
+      notes: i.notes,
+      date: i.startNow ? todayISO() : i.date,
+      time: i.startNow ? now.slice(11) : i.time || undefined,
+      expected: i.startNow && onSite.length ? onSite : crew,
+      attended: [],
+      signatures: [],
+      sentTo: [],
+      answers: {},
+      status: i.startNow ? "In progress" : "Scheduled",
+      spontaneous: i.startNow || undefined,
+      templateId: tpl?.id,
+      templateName: tpl?.name,
+      snapshot: tpl ? JSON.parse(JSON.stringify(tpl.sections)) : undefined,
+      startedAt: i.startNow ? now : undefined,
+    };
+    act(
+      (s) => ({ ...s, talks: [talk, ...s.talks] }),
+      ev(
+        meetingArea(i.kind),
+        i.projectId,
+        `${i.startNow ? "started" : "scheduled"} the ${i.kind.toLowerCase()} ${i.topic}`,
+        "Not scheduled",
+        i.startNow ? "In progress" : i.date,
+      ),
+    );
+    return id;
+  },
+  startMeeting: (id) => {
+    const s0 = current();
+    const t = s0.talks.find((x) => x.id === id);
+    if (!t || t.status === "In progress" || t.status === "Completed") return;
+    const kind = t.kind ?? "Toolbox talk";
+    const tpl =
+      s0.meetingTemplates.find((x) => x.id === t.templateId) ??
+      s0.meetingTemplates.find((x) => x.kind === kind && x.isDefault);
+    const now = stamp();
+    act(
+      (s) => ({
+        ...s,
+        talks: patchIn(s.talks, id, (x) => ({
+          ...x,
+          status: "In progress" as const,
+          startedAt: now,
+          templateId: x.templateId ?? tpl?.id,
+          templateName: x.templateName ?? tpl?.name,
+          snapshot:
+            x.snapshot ??
+            (tpl ? JSON.parse(JSON.stringify(tpl.sections)) : undefined),
+          signatures: x.signatures ?? [],
+          sentTo: x.sentTo ?? [],
+          answers: x.answers ?? {},
+        })),
+      }),
+      ev(meetingArea(kind), t.projectId, `started ${t.topic}`, "Scheduled", "In progress"),
+    );
+  },
+  addAttendee: (id, workerId) =>
+    update((s) => ({
+      ...s,
+      talks: patchIn(s.talks, id, (x) =>
+        x.expected.includes(workerId)
+          ? x
+          : { ...x, expected: [...x.expected, workerId] },
+      ),
+    })),
+  removeAttendee: (id, workerId) =>
+    update((s) => ({
+      ...s,
+      talks: patchIn(s.talks, id, (x) =>
+        (x.signatures ?? []).some((g) => g.workerId === workerId)
+          ? x
+          : {
+              ...x,
+              expected: x.expected.filter((w) => w !== workerId),
+              sentTo: (x.sentTo ?? []).filter((w) => w !== workerId),
+            },
+      ),
+    })),
+  signMeeting: (id, workerId, path, mode) => {
+    const s0 = current();
+    const t = s0.talks.find((x) => x.id === id);
+    if (!t || (t.signatures ?? []).some((g) => g.workerId === workerId)) return;
+    act(
+      (s) => ({
+        ...s,
+        talks: patchIn(s.talks, id, (x) => ({
+          ...x,
+          signatures: [
+            ...(x.signatures ?? []),
+            { workerId, at: stamp(), path, mode },
+          ],
+          attended: x.attended.includes(workerId)
+            ? x.attended
+            : [...x.attended, workerId],
+          expected: x.expected.includes(workerId)
+            ? x.expected
+            : [...x.expected, workerId],
+        })),
+      }),
+      ev(
+        meetingArea(t.kind ?? "Toolbox talk"),
+        t.projectId,
+        `${workerName(s0, workerId)} signed ${t.topic}`,
+        "Not signed",
+        "Signed",
+      ),
+    );
+  },
+  sendToProfile: (id, workerId) =>
+    update((s) => ({
+      ...s,
+      talks: patchIn(s.talks, id, (x) => ({
+        ...x,
+        expected: x.expected.includes(workerId)
+          ? x.expected
+          : [...x.expected, workerId],
+        sentTo: (x.sentTo ?? []).includes(workerId)
+          ? (x.sentTo ?? [])
+          : [...(x.sentTo ?? []), workerId],
+      })),
+    })),
+  completeMeeting: (id) => {
+    const s0 = current();
+    const t = s0.talks.find((x) => x.id === id);
+    if (!t || t.status === "Completed") return;
+    act(
+      (s) => ({
+        ...s,
+        talks: patchIn(s.talks, id, (x) => ({
+          ...x,
+          status: "Completed" as const,
+          completedAt: stamp(),
+        })),
+      }),
+      ev(
+        meetingArea(t.kind ?? "Toolbox talk"),
+        t.projectId,
+        `completed ${t.topic} with ${(t.signatures ?? []).length} signature${(t.signatures ?? []).length === 1 ? "" : "s"}`,
+        "In progress",
+        "Completed",
+      ),
+    );
+  },
+  saveMeetingTemplate: (t) =>
+    update((s) => {
+      const exists = s.meetingTemplates.some((x) => x.id === t.id);
+      const list = exists
+        ? s.meetingTemplates.map((x) => (x.id === t.id ? t : x))
+        : [...s.meetingTemplates, t];
+      // only one default per kind
+      return {
+        ...s,
+        meetingTemplates: list.map((x) =>
+          t.isDefault && x.kind === t.kind && x.id !== t.id
+            ? { ...x, isDefault: false }
+            : x,
+        ),
+      };
+    }),
+  removeMeetingTemplate: (id) =>
+    update((s) => {
+      const t = s.meetingTemplates.find((x) => x.id === id);
+      if (!t) return s;
+      const sameKind = s.meetingTemplates.filter((x) => x.kind === t.kind);
+      if (sameKind.length < 2) return s;
+      const rest = s.meetingTemplates.filter((x) => x.id !== id);
+      const next = rest.find((x) => x.kind === t.kind)!;
+      return {
+        ...s,
+        meetingTemplates: rest.map((x) =>
+          t.isDefault && x.id === next.id ? { ...x, isDefault: true } : x,
+        ),
+      };
+    }),
+  setDefaultMeetingTemplate: (id) =>
+    update((s) => {
+      const t = s.meetingTemplates.find((x) => x.id === id);
+      if (!t) return s;
+      return {
+        ...s,
+        meetingTemplates: s.meetingTemplates.map((x) =>
+          x.kind === t.kind ? { ...x, isDefault: x.id === id } : x,
+        ),
+      };
+    }),
 
   startInspection: (projectId, kind, inspector) => {
     const id = `in-${uid()}`;
@@ -2360,6 +2614,14 @@ export function signInAs(account: "builder" | "subcontractor", email = "") {
       },
     };
   });
+}
+
+/** Open a worker's own profile, where they sign what has been sent to them. The demo has no real logins. */
+export function signInAsWorker(workerId: string) {
+  update((s) => ({
+    ...s,
+    settings: { ...s.settings, account: "worker", workerId },
+  }));
 }
 
 const Ctx = createContext<Store | null>(null);

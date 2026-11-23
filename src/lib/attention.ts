@@ -2,6 +2,9 @@ import { todayISO } from "./format";
 import {
   daysUntil,
   expiryOf,
+  meetingDue,
+  meetingHref,
+  meetingStatus,
   type Action,
   type Chemical,
   type Defect,
@@ -219,18 +222,37 @@ export function attentionFor(i: Input): Attention[] {
       });
     }
 
+  const clock = new Date();
+  const hm = `${String(clock.getHours()).padStart(2, "0")}:${String(clock.getMinutes()).padStart(2, "0")}`;
   for (const t of i.talks) {
+    const st = meetingStatus(t);
+    if (st === "Completed") continue;
     const d = daysUntil(t.date);
-    if (d < 0 || d > 7) continue;
+    const due = meetingDue(t, todayISO(), hm);
+    if (st === "Scheduled" && !due && d > 7) continue;
+    const kind = t.kind ?? "Toolbox talk";
     out.push({
       id: `tb-${t.id}`,
       kind: "talk",
-      title: `Toolbox talk: ${t.topic}`,
+      title:
+        st === "In progress"
+          ? `Finish ${kind.toLowerCase()}: ${t.topic}`
+          : `${kind}: ${t.topic}`,
       where: i.projectName(t.projectId),
-      due: dueText(d),
-      href: "/dashboard/toolbox",
-      tone: "neutral",
-      rank: d + 2,
+      due:
+        st === "In progress"
+          ? "In progress, waiting to be completed"
+          : due
+            ? d < 0
+              ? dueText(d)
+              : "Due now, start it"
+            : d === 0
+              ? `Today ${t.time ?? ""}`.trim()
+              : dueText(d),
+      href: meetingHref(t),
+      tone: due ? "owed" : "neutral",
+      // a briefing that is due, or running, comes before older overdue items
+      rank: due ? -1000 + Math.min(d, 0) : st === "In progress" ? -500 : d + 2,
       who: ini(t.presenter),
       projectId: t.projectId,
     });

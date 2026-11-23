@@ -6,6 +6,7 @@ import {
   expiryOf,
   INSPECTION_TEMPLATES,
   me,
+  meetingHref,
   PERMIT_CHECKS,
   rating,
   RISK_CATEGORIES,
@@ -922,7 +923,7 @@ export async function executeTool(
           "WHS committee",
           "Coordination meeting",
         ] as const) ?? "Toolbox talk") as MeetingKind;
-        store.addTalk({
+        const talkId = store.addTalk({
           projectId,
           kind,
           topic,
@@ -938,12 +939,7 @@ export async function executeTool(
           text: `${kind} scheduled: ${topic} on ${date}.`,
           outcome: `${kind} scheduled`,
           link: {
-            path:
-              kind === "Toolbox talk"
-                ? "/dashboard/toolbox"
-                : kind === "Pre-start meeting"
-                  ? "/dashboard/prestart"
-                  : "/dashboard/consultation",
+            path: meetingHref({ id: talkId, kind }),
             label: "Open it",
           },
         };

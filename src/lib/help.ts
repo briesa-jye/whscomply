@@ -189,13 +189,21 @@ Choose **Spot hazards in a photo**, add a picture of the work area, and the AI l
     title: "Toolbox talks and meetings",
     category: "Site safety",
     icon: "users",
-    summary: "Schedule briefings and record who attended.",
+    summary: "Start or schedule a briefing, then everyone signs.",
     open: { href: "/dashboard/toolbox", label: "Open toolbox talks" },
-    body: `## Schedule a talk
-Choose **Schedule talk**, pick the topic and the project and say who presents. Everyone assigned to the project is added to the attendance list. Choose **Draft** to have the AI write the key points, drawing on what has happened on the project recently.
+    body: `## Start now or schedule it
+Choose **Start toolbox talk now** when a briefing happens on the spot, or **Schedule for later** to set a day and time. Each opens its own page rather than a pop-up. Pick the project, the template and who presents. Choose **Draft** to have the AI write the key points from what has happened on the project recently.
 
-## Record attendance
-Open the talk and tick each person who attended. Attendance shows as a count and a bar.
+Scheduled ones appear in your needs-action list when their day and time arrive. Open it and choose **Start now**.
+
+## Complete the form
+Fill in your template: tick boxes, yes/no answers, written answers and numbers. Items marked * are required.
+
+## Attendance and signatures
+Everyone assigned to the project is on the list, and you can add anyone else from the project. Each attendee is linked to their own profile and signs by drawing their signature. Choose **Sign on this device** to hand over the screen, or **Send to their profile** so they sign from their own WHSCOMPLY profile. When you choose **Complete**, any listed person who has not signed is recorded as not attending.
+
+## Your templates
+Choose **Customise template** to decide what is recorded. Add sections and items, mark items required, add several templates and pick a default. A record keeps the template as it was when it started, so changing a template never rewrites past records.
 
 ## Other meetings
 **Pre-start** holds the daily briefing before work starts. **WHS Meetings** holds WHS committee and coordination meetings. Both work the same way as toolbox talks.`,

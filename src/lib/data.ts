@@ -178,7 +178,63 @@ export type Talk = {
   presenter: string;
   notes: string;
   expected: string[];
+  /** people who signed, plus older records where a presenter ticked names */
   attended: string[];
+  /** missing on older records: Scheduled when still ahead, otherwise Completed */
+  status?: MeetingStatus;
+  /** scheduled start, "hh:mm" */
+  time?: string;
+  /** started on the spot rather than scheduled */
+  spontaneous?: boolean;
+  templateId?: string;
+  templateName?: string;
+  /** the template as it was when the meeting started, so editing a template never rewrites history */
+  snapshot?: TemplateSection[];
+  /** template item id to the answer: "yes", "no", "na", "done" or text */
+  answers?: Record<string, string>;
+  signatures?: MeetingSignature[];
+  /** people asked to sign from their own profile */
+  sentTo?: string[];
+  /** "yyyy-mm-dd hh:mm" */
+  startedAt?: string;
+  completedAt?: string;
+};
+
+export type MeetingStatus = "Scheduled" | "In progress" | "Completed";
+
+export type TemplateItemType = "tick" | "yesno" | "text" | "number";
+
+export type TemplateItem = {
+  id: string;
+  label: string;
+  type: TemplateItemType;
+  required: boolean;
+};
+
+export type TemplateSection = {
+  id: string;
+  title: string;
+  items: TemplateItem[];
+};
+
+/** The content a client wants for a type of meeting. Each client edits its own. */
+export type MeetingTemplate = {
+  id: string;
+  kind: MeetingKind;
+  name: string;
+  /** the template offered first when starting this kind of meeting */
+  isDefault: boolean;
+  sections: TemplateSection[];
+};
+
+export type MeetingSignature = {
+  workerId: string;
+  /** "yyyy-mm-dd hh:mm" */
+  at: string;
+  /** the drawn signature as SVG path data in a 400 by 140 box */
+  path: string;
+  /** signed on the presenter's device, or from the attendee's own profile */
+  mode: "device" | "profile";
 };
 
 export type InspResult = "pass" | "fail" | "na" | null;
@@ -316,9 +372,11 @@ export type Settings = {
   /** days of warning before a ticket or document expires */
   warnDays: number;
   /** set at sign up */
-  account?: "builder" | "subcontractor";
+  account?: "builder" | "subcontractor" | "worker";
   /** which subcontractor record the subcontractor portal shows */
   subId?: string;
+  /** which worker record the worker profile shows */
+  workerId?: string;
   plan?: BuilderPlan;
   /** ISO date the free trial ends, set at sign up. Missing means a paying customer. */
   trialEnds?: string;
@@ -1902,6 +1960,127 @@ export const seedDocs: Doc[] = [
     updated: addDays(-14),
     reviewDue: addDays(350),
     signed: [],
+  },
+];
+
+export const meetingStatus = (t: Talk): MeetingStatus =>
+  t.status ?? (daysUntil(t.date) >= 0 ? "Scheduled" : "Completed");
+
+/** A scheduled meeting whose day and time has arrived and that nobody has started. */
+export function meetingDue(t: Talk, today: string, hhmm: string): boolean {
+  if (meetingStatus(t) !== "Scheduled") return false;
+  if (t.date < today) return true;
+  return t.date === today && (!t.time || t.time <= hhmm);
+}
+
+export const MEETING_PATH: Record<MeetingKind, string> = {
+  "Pre-start meeting": "/dashboard/prestart",
+  "Toolbox talk": "/dashboard/toolbox",
+  "WHS committee": "/dashboard/consultation",
+  "Coordination meeting": "/dashboard/consultation",
+};
+
+export const meetingHref = (t: Pick<Talk, "id" | "kind">) =>
+  `${MEETING_PATH[t.kind ?? "Toolbox talk"]}/${t.id}`;
+
+const tplItem = (
+  id: string,
+  label: string,
+  type: TemplateItemType = "tick",
+  required = false,
+): TemplateItem => ({ id, label, type, required });
+
+/** A sensible starting template for each kind of meeting. Clients change or replace them. */
+export const seedMeetingTemplates: MeetingTemplate[] = [
+  {
+    id: "tpl-prestart",
+    kind: "Pre-start meeting",
+    name: "Daily pre-start",
+    isDefault: true,
+    sections: [
+      {
+        id: "s1",
+        title: "Today's work",
+        items: [
+          tplItem("i1", "Work planned today", "text", true),
+          tplItem("i2", "Areas and levels in use", "text"),
+        ],
+      },
+      {
+        id: "s2",
+        title: "Safety checks",
+        items: [
+          tplItem("i3", "SWMS reviewed for today's high risk work"),
+          tplItem("i4", "Permits in place for today's work"),
+          tplItem("i5", "Exclusion zones and edge protection checked"),
+          tplItem("i6", "Assembly point and first aider confirmed"),
+          tplItem("i7", "Any new hazards since the last shift?", "yesno", true),
+        ],
+      },
+      {
+        id: "s3",
+        title: "People and plant",
+        items: [
+          tplItem("i8", "Plant pre-starts completed"),
+          tplItem("i9", "Visitors or deliveries expected today?", "yesno"),
+          tplItem("i10", "Issues raised by the crew", "text"),
+        ],
+      },
+    ],
+  },
+  {
+    id: "tpl-toolbox",
+    kind: "Toolbox talk",
+    name: "Standard toolbox talk",
+    isDefault: true,
+    sections: [
+      {
+        id: "s1",
+        title: "The talk",
+        items: [
+          tplItem("i1", "Key points covered", "text", true),
+          tplItem("i2", "Questions or concerns raised", "text"),
+          tplItem("i3", "Does anything need an action raised?", "yesno"),
+          tplItem("i4", "Everyone had the chance to ask questions"),
+        ],
+      },
+    ],
+  },
+  {
+    id: "tpl-whs",
+    kind: "WHS committee",
+    name: "WHS committee meeting",
+    isDefault: true,
+    sections: [
+      {
+        id: "s1",
+        title: "Agenda",
+        items: [
+          tplItem("i1", "Incidents and near misses reviewed", "text", true),
+          tplItem("i2", "Open corrective actions reviewed", "text"),
+          tplItem("i3", "Hazards and risks raised by workers", "text"),
+          tplItem("i4", "Decisions and new actions", "text", true),
+        ],
+      },
+    ],
+  },
+  {
+    id: "tpl-coord",
+    kind: "Coordination meeting",
+    name: "Subcontractor coordination",
+    isDefault: true,
+    sections: [
+      {
+        id: "s1",
+        title: "Coordination",
+        items: [
+          tplItem("i1", "Trades on site this week", "text", true),
+          tplItem("i2", "Overlapping work and shared hazards", "text", true),
+          tplItem("i3", "Access, laydown and crane use agreed"),
+          tplItem("i4", "Actions for each subcontractor", "text"),
+        ],
+      },
+    ],
   },
 ];
 

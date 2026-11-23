@@ -6,11 +6,12 @@ export default function PrestartPage() {
   return (
     <MeetingsView
       kinds={["Pre-start meeting"]}
+      base="/dashboard/prestart"
       title="Pre-start meetings"
-      sub="The daily briefing before work starts. Record what was covered and tick off who attended, so briefing and consultation with workers are on the record."
-      addLabel="Schedule pre-start"
+      sub="The daily briefing before work starts. Start one on the spot or schedule it, then everyone signs with a drawn signature linked to their profile."
+      noun="pre-start"
       emptyTitle="No pre-starts yet."
-      emptyBody="Schedule one and the project's crew is added to the attendance list."
+      emptyBody="Start one now, or schedule the next one. The crew signs on screen."
     />
   );
 }

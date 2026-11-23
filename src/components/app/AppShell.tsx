@@ -113,6 +113,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (ready && settings.account === "subcontractor")
       router.replace("/portal");
+    if (ready && settings.account === "worker") router.replace("/me");
   }, [ready, settings.account, router]);
 
   const isActive = (href: string) =>

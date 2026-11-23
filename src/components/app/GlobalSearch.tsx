@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { rating } from "@/lib/data";
+import { meetingHref, rating } from "@/lib/data";
 import { HELP } from "@/lib/help";
 import { fmtDate } from "@/lib/format";
 import { Icon, type IconName } from "../Icons";
@@ -444,12 +444,7 @@ export function GlobalSearch({
         icon: "users",
         title: t.topic,
         sub: `${t.kind ?? "Toolbox talk"} · ${fmtDate(t.date)} · ${pn(t.projectId)}`,
-        href:
-          (t.kind ?? "Toolbox talk") === "Toolbox talk"
-            ? "/dashboard/toolbox"
-            : t.kind === "Pre-start meeting"
-              ? "/dashboard/prestart"
-              : "/dashboard/consultation",
+        href: meetingHref(t),
         text: `${t.topic} ${t.kind ?? "Toolbox talk"} ${t.presenter} ${t.notes} ${pn(t.projectId)}`,
       });
 
