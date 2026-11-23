@@ -386,19 +386,24 @@ Tickets that expire within your warning window show as expiring, and expired one
   },
   {
     id: "inductions",
-    title: "Site inductions and the gate",
+    title: "Site access, inductions and the gate",
     category: "People",
     icon: "user",
-    summary: "Induct workers to a site and sign them on and off.",
-    open: { href: "/dashboard/inductions", label: "Open inductions" },
-    body: `## Induction content
+    summary: "Approve contractor workers, induct them and sign them on and off.",
+    open: { href: "/dashboard/projects", label: "Open projects" },
+    body: `Open a project from **Projects** and choose its **Site access** tab.
+
+## Contractor access requests
+A subcontractor asks for each worker through its portal. The request appears here. **Approve** is available once the subcontractor is approved, the worker has a white card on file and no ticket has expired. **Decline** needs a reason, which the subcontractor sees.
+
+## Induction content
 Each project has its own list of induction topics. Choose **Edit** to add topics specific to that site, or remove any you do not need.
 
 ## Inducting a worker
-Choose **Induct** next to a worker who is waiting. They tick each topic and type their full name to sign. The record shows who inducted them and when.
+Choose **Review and induct** next to a worker who is waiting. They tick each topic and type their full name to sign. The record shows who inducted them and when.
 
 ## Signing on and off
-On **Projects**, each project has a gate list. **Sign on** is available once a worker is inducted and has no expired ticket. **Sign off** when they leave. The dashboard and the diary show who is on site.`,
+**Sign on** is available once a worker is inducted, has a white card and has no expired ticket. **Sign off** when they leave. Each sign on and off is logged with the time, and the dashboard and the diary show who is on site.`,
   },
   {
     id: "subcontractors",
@@ -425,8 +430,8 @@ Add insurances, workers' compensation and licences with their expiry dates, and 
     category: "People",
     icon: "user",
     summary: "Sign visitors in and out and know who is on site.",
-    open: { href: "/dashboard/visitors", label: "Open visitors" },
-    body: `Choose **Sign in visitor**, enter who they are, their company, why they are here and who is hosting them. Say whether they have had a visitor induction: if not, they must be escorted at all times.
+    open: { href: "/dashboard/projects", label: "Open projects" },
+    body: `Open a project and choose its **Site access** tab. Choose **Sign in visitor**, enter who they are, their company, why they are here and who is hosting them. Say whether they have had a visitor induction: if not, they must be escorted at all times.
 
 Choose **Sign out** when they leave. A visitor who is still signed in from an earlier day is flagged.`,
   },

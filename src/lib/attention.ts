@@ -8,6 +8,7 @@ import {
   type Inspection,
   type InspectionSchedule,
   type Rfi,
+  type SiteRequest,
   type Doc,
   type Drill,
   type Permit,
@@ -41,7 +42,8 @@ export type Attention = {
     | "defect"
     | "rfi"
     | "inspection"
-    | "invite";
+    | "invite"
+    | "request";
   title: string;
   where: string;
   due: string;
@@ -79,6 +81,7 @@ type Input = {
   rfis: Rfi[];
   schedules: InspectionSchedule[];
   inspections: Inspection[];
+  requests: SiteRequest[];
   warnDays: number;
   notify: {
     tickets: boolean;
@@ -87,6 +90,7 @@ type Input = {
     incidents: boolean;
   };
   projectName: (id: string) => string;
+  workerName: (id: string) => string;
 };
 
 const ini = (n: string) =>
@@ -378,6 +382,22 @@ export function attentionFor(i: Input): Attention[] {
     });
   }
 
+  for (const r of i.requests) {
+    if (r.status !== "Pending") continue;
+    out.push({
+      id: `sr-${r.id}`,
+      kind: "request",
+      title: `Site access request: ${i.workerName(r.workerId)}`,
+      where: i.projectName(r.projectId),
+      due: "Waiting for approval",
+      href: `/dashboard/projects/${r.projectId}`,
+      tone: "owed",
+      rank: 0,
+      who: ini(i.workerName(r.workerId)),
+      projectId: r.projectId,
+    });
+  }
+
   for (const v of i.visitors) {
     if (v.outAt || v.inAt.slice(0, 10) >= todayISO()) continue;
     out.push({
@@ -386,7 +406,7 @@ export function attentionFor(i: Input): Attention[] {
       title: `Visitor never signed out: ${v.name}`,
       where: i.projectName(v.projectId),
       due: "Signed in on an earlier day",
-      href: "/dashboard/visitors",
+      href: `/dashboard/projects/${v.projectId}`,
       tone: "owed",
       rank: -1,
       who: ini(v.name),

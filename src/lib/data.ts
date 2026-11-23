@@ -456,6 +456,30 @@ export type Visitor = {
   inducted: boolean;
 };
 
+/** One worker signing on or off at a project gate. `at` is "yyyy-mm-dd hh:mm". */
+export type GateEvent = {
+  id: string;
+  projectId: string;
+  workerId: string;
+  kind: "on" | "off";
+  at: string;
+};
+
+/** A subcontractor asking for one of its workers to be allowed onto a project. */
+export type SiteRequest = {
+  id: string;
+  projectId: string;
+  workerId: string;
+  subId: string;
+  /** "yyyy-mm-dd hh:mm" */
+  requestedAt: string;
+  status: "Pending" | "Approved" | "Declined" | "Cancelled";
+  decidedAt?: string;
+  decidedBy?: string;
+  /** why a request was declined */
+  note?: string;
+};
+
 export type Doc = {
   id: string;
   /** "all" for a business-wide document */
@@ -511,6 +535,38 @@ export function expiryOf(iso: string | null, warn = 30): Expiry {
   if (d < 0) return "expired";
   if (d <= warn) return "soon";
   return "valid";
+}
+
+/** The general construction induction (white card) is required of every worker on site. */
+export const hasWhiteCard = (w: Pick<Worker, "tickets">) =>
+  w.tickets.some((t) => /white card|general construction induction/i.test(t.kind));
+
+/**
+ * Why a worker cannot be approved for a site, in the order a person would fix them.
+ * Empty means clear. Used by the project Site access tab, the subcontractor portal
+ * and the assistant, so every route applies the same rules.
+ */
+export function approvalBlockers(
+  w: Pick<Worker, "tickets">,
+  sub?: Pick<Subcontractor, "approved">,
+): string[] {
+  const out: string[] = [];
+  if (sub && !sub.approved) out.push("Contractor not approved");
+  if (!hasWhiteCard(w)) out.push("No white card on file");
+  const lapsed = w.tickets.filter((t) => expiryOf(t.expires, 0) === "expired");
+  if (lapsed.length) out.push(lapsed.length === 1 ? "Expired ticket" : "Expired tickets");
+  return out;
+}
+
+/** Everything that stops a worker signing on: the approval blockers plus the site induction. */
+export function signOnBlockers(
+  w: Pick<Worker, "tickets" | "inducted">,
+  projectId: string,
+  sub?: Pick<Subcontractor, "approved">,
+): string[] {
+  const out = approvalBlockers(w, sub);
+  if (!w.inducted.includes(projectId)) out.push("Needs a site induction first");
+  return out;
 }
 
 export const TICKET_KINDS = [
@@ -929,6 +985,18 @@ export const seedWorkers: Worker[] = [
         number: "WAH-9031",
         expires: addDays(210),
       },
+    ],
+  },
+  {
+    id: "w-hartley",
+    name: "Jess Hartley",
+    role: "Formwork carpenter",
+    company: "s-ridge",
+    phone: "0402 551 940",
+    projects: [],
+    inducted: [],
+    tickets: [
+      { id: "t20", kind: TICKET_KINDS[0], number: "WC-412076", expires: null },
     ],
   },
 ];
@@ -1695,6 +1763,29 @@ export const seedDrills: Drill[] = [
     by: "Dana Whitfield",
     notes: "Muster point moved after the stage 2 hoarding went up.",
     nextDue: addDays(-40),
+  },
+];
+
+/** Today's gate activity for the workers already on site in the seed data. */
+export const seedGateLog: GateEvent[] = [
+  { id: "g1", projectId: "p-marsh", workerId: "w-dunn", kind: "on", at: `${T} 06:32` },
+  { id: "g2", projectId: "p-marsh", workerId: "w-nguyen", kind: "on", at: `${T} 06:41` },
+  { id: "g3", projectId: "p-marsh", workerId: "w-okafor", kind: "on", at: `${T} 06:58` },
+  { id: "g4", projectId: "p-marsh", workerId: "w-kim", kind: "on", at: `${T} 07:04` },
+  { id: "g5", projectId: "p-marsh", workerId: "w-silva", kind: "on", at: `${T} 07:12` },
+  { id: "g6", projectId: "p-quarry", workerId: "w-becker", kind: "on", at: `${T} 06:50` },
+  { id: "g7", projectId: "p-quarry", workerId: "w-reyes", kind: "on", at: `${T} 07:20` },
+];
+
+/** A subcontractor request waiting for the builder to approve. */
+export const seedSiteRequests: SiteRequest[] = [
+  {
+    id: "sr1",
+    projectId: "p-marsh",
+    workerId: "w-hartley",
+    subId: "s-ridge",
+    requestedAt: `${T} 07:05`,
+    status: "Pending",
   },
 ];
 

@@ -168,10 +168,10 @@ const PAGES: { title: string; href: string; icon: IconName; words: string }[] =
       words: "white card licence expiry crew",
     },
     {
-      title: "Inductions",
-      href: "/dashboard/inductions",
+      title: "Site access",
+      href: "/dashboard/projects",
       icon: "user",
-      words: "site induction sign",
+      words: "induction approval sign on off gate visitor contractor request project",
     },
     {
       title: "Training matrix",
@@ -184,12 +184,6 @@ const PAGES: { title: string; href: string; icon: IconName; words: string }[] =
       href: "/dashboard/subcontractors",
       icon: "store",
       words: "prequalification insurance workcover approve",
-    },
-    {
-      title: "Visitors",
-      href: "/dashboard/visitors",
-      icon: "user",
-      words: "sign in out",
     },
     {
       title: "Pre-start",
@@ -532,7 +526,7 @@ export function GlobalSearch({
         icon: "user",
         title: v.name,
         sub: `Visitor · ${v.company} · ${pn(v.projectId)}`,
-        href: "/dashboard/visitors",
+        href: `/dashboard/projects/${v.projectId}`,
         text: `${v.name} ${v.company} ${v.purpose} ${v.host} visitor`,
       });
 

@@ -31,6 +31,8 @@ import {
   seedPermits,
   seedPlant,
   seedVisitors,
+  seedGateLog,
+  seedSiteRequests,
   seedAudit,
   seedIncidents,
   seedInspections,
@@ -59,6 +61,8 @@ import {
   type Permit,
   type Plant,
   type Visitor,
+  type GateEvent,
+  type SiteRequest,
   type AuditArea,
   type AuditEvent,
   type Incident,
@@ -129,6 +133,10 @@ type Saved = {
   drawings: Drawing[];
   schedules: InspectionSchedule[];
   invites: Invite[];
+  /** who signed on and off each project gate, with the time */
+  gateLog: GateEvent[];
+  /** subcontractors asking for a worker to be allowed onto a project */
+  siteRequests: SiteRequest[];
   iso: IsoState;
 };
 
@@ -162,6 +170,8 @@ const SEED: Saved = {
   drawings: seedDrawings,
   schedules: seedSchedules,
   invites: seedInvites,
+  gateLog: seedGateLog,
+  siteRequests: seedSiteRequests,
   iso: {
     profile: {
       company: seedSettings.company.name,
@@ -230,6 +240,15 @@ function valid(p: Saved | null): p is Saved {
   );
 }
 
+/** Fill in lists added after a browser first saved its demo state, so older saves keep their data. */
+function migrate(p: Saved): Saved {
+  return {
+    ...p,
+    gateLog: p.gateLog ?? [],
+    siteRequests: p.siteRequests ?? [],
+  };
+}
+
 function readSaved(): Saved | null {
   let raw: string | null = null;
   try {
@@ -242,7 +261,7 @@ function readSaved(): Saved | null {
   cacheRaw = raw;
   try {
     const p = raw ? (JSON.parse(raw) as Saved) : null;
-    cacheVal = valid(p) ? p : null;
+    cacheVal = valid(p) ? migrate(p) : null;
   } catch {
     cacheVal = null;
   }
@@ -276,6 +295,12 @@ const update = (fn: (s: Saved) => Saved) => writeSaved(fn(current()));
 
 const uid = () =>
   Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
+
+/** "yyyy-mm-dd hh:mm" for now, the format used for gate and visitor times. */
+const stamp = () => {
+  const d = new Date();
+  return `${todayISO()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
 
 const nowTime = () =>
   new Date().toLocaleTimeString("en-AU", {
@@ -395,6 +420,14 @@ type Store = Saved & {
   updateProject: (id: string, patch: Partial<Project>) => void;
   signOn: (projectId: string, workerId: string) => void;
   signOff: (projectId: string, workerId: string) => void;
+  /** a subcontractor asks for one of its workers to be allowed onto a project */
+  requestSiteAccess: (workerId: string, projectId: string) => void;
+  decideSiteRequest: (
+    id: string,
+    decision: "Approved" | "Declined",
+    note?: string,
+  ) => void;
+  cancelSiteRequest: (id: string) => void;
 
   addWorker: (i: NewWorker) => string;
   updateWorker: (id: string, patch: Partial<Worker>) => void;
@@ -664,6 +697,20 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
             ? p
             : { ...p, onSite: [...p.onSite, workerId] },
         ),
+        gateLog: s.projects
+          .find((p) => p.id === projectId)
+          ?.onSite.includes(workerId)
+          ? s.gateLog
+          : [
+              {
+                id: `g-${uid()}`,
+                projectId,
+                workerId,
+                kind: "on" as const,
+                at: stamp(),
+              },
+              ...s.gateLog,
+            ],
       }),
       ev(
         "People",
@@ -683,6 +730,20 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
           ...p,
           onSite: p.onSite.filter((w) => w !== workerId),
         })),
+        gateLog: s.projects
+          .find((p) => p.id === projectId)
+          ?.onSite.includes(workerId)
+          ? [
+              {
+                id: `g-${uid()}`,
+                projectId,
+                workerId,
+                kind: "off" as const,
+                at: stamp(),
+              },
+              ...s.gateLog,
+            ]
+          : s.gateLog,
       }),
       ev(
         "People",
@@ -690,6 +751,100 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
         `signed ${workerName(s0, workerId)} off at ${projectName(s0, projectId)}`,
         "On site",
         "Off site",
+      ),
+    );
+  },
+
+  requestSiteAccess: (workerId, projectId) => {
+    const s0 = current();
+    const w = s0.workers.find((x) => x.id === workerId);
+    if (!w || w.projects.includes(projectId)) return;
+    if (
+      s0.siteRequests.some(
+        (r) =>
+          r.workerId === workerId &&
+          r.projectId === projectId &&
+          r.status === "Pending",
+      )
+    )
+      return;
+    act(
+      (s) => ({
+        ...s,
+        siteRequests: [
+          {
+            id: `sr-${uid()}`,
+            projectId,
+            workerId,
+            subId: w.company,
+            requestedAt: stamp(),
+            status: "Pending" as const,
+          },
+          ...s.siteRequests,
+        ],
+      }),
+      ev(
+        "People",
+        projectId,
+        `asked for ${w.name} to be allowed on ${projectName(s0, projectId)}`,
+        "Not allocated",
+        "Requested",
+      ),
+    );
+  },
+  decideSiteRequest: (id, decision, note) => {
+    const s0 = current();
+    const r = s0.siteRequests.find((x) => x.id === id);
+    if (!r || r.status !== "Pending") return;
+    act(
+      (s) => ({
+        ...s,
+        siteRequests: s.siteRequests.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                status: decision,
+                decidedAt: stamp(),
+                decidedBy: me.name,
+                note: note?.trim() || undefined,
+              }
+            : x,
+        ),
+        workers:
+          decision === "Approved"
+            ? patchIn(s.workers, r.workerId, (w) =>
+                w.projects.includes(r.projectId)
+                  ? w
+                  : { ...w, projects: [...w.projects, r.projectId] },
+              )
+            : s.workers,
+      }),
+      ev(
+        "People",
+        r.projectId,
+        `${decision === "Approved" ? "approved" : "declined"} ${workerName(s0, r.workerId)} for ${projectName(s0, r.projectId)}`,
+        "Requested",
+        decision,
+      ),
+    );
+  },
+  cancelSiteRequest: (id) => {
+    const s0 = current();
+    const r = s0.siteRequests.find((x) => x.id === id);
+    if (!r || r.status !== "Pending") return;
+    act(
+      (s) => ({
+        ...s,
+        siteRequests: s.siteRequests.map((x) =>
+          x.id === id ? { ...x, status: "Cancelled" as const } : x,
+        ),
+      }),
+      ev(
+        "People",
+        r.projectId,
+        `withdrew the request for ${workerName(s0, r.workerId)} at ${projectName(s0, r.projectId)}`,
+        "Requested",
+        "Withdrawn",
       ),
     );
   },

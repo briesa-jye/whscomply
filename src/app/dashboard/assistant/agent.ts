@@ -9,6 +9,7 @@ import {
   PERMIT_CHECKS,
   rating,
   RISK_CATEGORIES,
+  signOnBlockers,
   WEATHER,
   type IncidentType,
   type MeetingKind,
@@ -1156,28 +1157,34 @@ export async function executeTool(
             ok: true,
             text: `${w.name} signed off at ${pname(projectId)}.`,
             outcome: `${w.name} signed off`,
-            link: { path: "/dashboard/projects", label: "Open the gate list" },
+            link: {
+              path: `/dashboard/projects/${projectId}`,
+              label: "Open site access",
+            },
           };
         }
         if (!w.projects.includes(projectId))
-          return fail(`${w.name} is not assigned to ${pname(projectId)}.`);
-        if (!w.inducted.includes(projectId))
           return fail(
-            `${w.name} has not been inducted to ${pname(projectId)}. A person has to complete the induction at /dashboard/inductions.`,
+            `${w.name} is not allocated to ${pname(projectId)}. A subcontractor's worker is requested through the portal, then approved on the project's Site access tab.`,
           );
-        const lapsed = w.tickets.find(
-          (t) => expiryOf(t.expires, 0) === "expired",
-        );
-        if (lapsed)
+        const sub =
+          w.company === "own"
+            ? undefined
+            : store.subs.find((x) => x.id === w.company);
+        const blockers = signOnBlockers(w, projectId, sub);
+        if (blockers.length)
           return fail(
-            `${w.name}'s ${lapsed.kind} has expired, so they cannot be signed on.`,
+            `${w.name} cannot be signed on at ${pname(projectId)}: ${blockers.join("; ").toLowerCase()}. Approvals and inductions are completed by a person on the project's Site access tab at /dashboard/projects/${projectId}.`,
           );
         store.signOn(projectId, w.id);
         return {
           ok: true,
           text: `${w.name} signed on at ${pname(projectId)}.`,
           outcome: `${w.name} signed on`,
-          link: { path: "/dashboard/projects", label: "Open the gate list" },
+          link: {
+            path: `/dashboard/projects/${projectId}`,
+            label: "Open site access",
+          },
         };
       }
       case "add_programme_task": {
@@ -1238,7 +1245,10 @@ export async function executeTool(
           ok: true,
           text: `${s(input.name)} signed in at ${pname(projectId)}${input.inducted === true ? "" : ", and needs an escort because they have not been inducted"}.`,
           outcome: `${s(input.name)} signed in`,
-          link: { path: "/dashboard/visitors", label: "Open visitors" },
+          link: {
+            path: `/dashboard/projects/${projectId}`,
+            label: "Open site access",
+          },
         };
       }
       case "request_permit": {
