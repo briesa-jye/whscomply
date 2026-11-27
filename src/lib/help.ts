@@ -337,8 +337,18 @@ Plant is not added straight to the register. Choose **Onboard plant** (or open *
 
 Subcontractors put their own plant forward from their portal under **My plant**. They can only choose a site they have been allocated to, and they see why anything is declined, so they can correct it and send it again.
 
+## What each type of plant has to supply
+Pick the type of plant first and the form asks for what that type needs. Every field, document and file is required, and so is a photo of the whole machine.
+- **Every type:** the manufacturer's instructions, evidence of the logbook (recent entries), the plant risk assessment, service and maintenance dates, and the meter reading for plant with an hours or kilometre meter.
+- **Registration:** design registration and item registration are separate documents. Tower cranes, concrete booms and mobile cranes over 10 tonnes need both. Boom-type EWPs and hoists that lift people need design registration only. Road registration is asked for when the plant is road registered, and is always needed for mobile cranes and portable concrete booms.
+- **Cranes:** a CraneSafe inspection report, the 10 yearly major inspection report, the lifting equipment register and the load chart. Tower plant also needs a foundation design statement.
+- **Concrete booms:** a line thickness test report.
+- **Insurance:** public liability insurance is not uploaded with the plant. It is checked against the contractor's own compliance documents, and plant cannot be approved if that is missing or expired.
+
+Service is the scheduled check-up, fluid and part changes, or a call-out to fix a fault. Maintenance is routine care. Each has its own due date and, for plant with a meter, its own due reading in hours or kilometres.
+
 ## The register
-Approved plant appears with its owner. Contractor plant is labelled. Choose **Take off site** when it leaves, and **Return to site** to bring it back.
+Approved plant is grouped by site, with company plant and contractor plant shown separately, the project on every row and the plant's photo. Contractor plant is labelled. Choose **Take off site** when it leaves, and **Return to site** to bring it back.
 
 ## Each day
 Choose **Log pre-start** once a day. Items without one show that no pre-start is done today.

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { AttachmentStrip } from "@/components/app/Attachments";
+import { AttachmentStrip, Thumb } from "@/components/app/Attachments";
 import { useStore } from "@/components/app/DemoStore";
 import {
   btnDark,
@@ -15,7 +15,13 @@ import {
   Pill,
 } from "@/components/app/ui";
 import { ExpiryPill } from "@/components/portal/ExpiryPill";
-import { expiryOf, plantBlockers } from "@/lib/data";
+import { expiryOf } from "@/lib/data";
+import {
+  contractorPl,
+  plantBlockers,
+  plantTypeOf,
+  readingLeft,
+} from "@/lib/plant-types";
 import { fmtDate } from "@/lib/format";
 
 /**
@@ -55,7 +61,13 @@ export function PlantReview({ id, base }: { id: string; base: string }) {
     o.ownerId === "own"
       ? "Our own plant"
       : (s.subs.find((x) => x.id === o.ownerId)?.name ?? "Subcontractor");
-  const blockers = plantBlockers(o);
+  const type = plantTypeOf(p);
+  const ownerSub =
+    o.ownerId === "own" ? undefined : s.subs.find((x) => x.id === o.ownerId);
+  const pl = contractorPl(ownerSub);
+  const blockers = plantBlockers(o, { photo: !!p.photo?.length, pl });
+  const service = readingLeft(p, "service");
+  const maint = readingLeft(p, "maintenance");
   const open = o.status === "Submitted";
   const verified = o.docs.filter((d) => d.verified).length;
   const answered = o.inspection.filter((c) => c.result !== null).length;
@@ -88,14 +100,32 @@ export function PlantReview({ id, base }: { id: string; base: string }) {
 
       <div className="space-y-6">
         <Card>
-          <dl className="grid gap-x-6 gap-y-3 p-5 sm:grid-cols-4">
+          <div className="flex flex-wrap items-start gap-5 p-5">
+            {p.photo?.[0] ? (
+              <Thumb a={p.photo[0]} className="h-28 w-28" />
+            ) : (
+              <div className="flex h-28 w-28 items-center justify-center rounded-lg border border-dashed border-line px-2 text-center text-xs text-ink-soft">
+                No photo
+              </div>
+            )}
+          <dl className="grid min-w-0 flex-1 gap-x-6 gap-y-3 sm:grid-cols-3">
             {[
+              ["Type", `${type.label} (${type.cls.toLowerCase()})`],
               ["Site", project?.name ?? "Unknown"],
               ["Arrives", fmtDate(o.onSiteFrom)],
-              ["Operator", o.operator],
+              ["Operators", `${o.operator}. Needs: ${type.licence.toLowerCase()}`],
               ["Submitted", `${o.submittedBy}, ${fmtDate(o.submittedAt.slice(0, 10))} ${o.submittedAt.slice(11)}`],
-              ["Last service", fmtDate(p.lastService)],
-              ["Next service", fmtDate(p.nextService)],
+              ["Meter", p.meter ? `${p.meter.reading} ${p.meter.kind}` : "No meter"],
+              [
+                "Service",
+                `Last ${fmtDate(p.lastService)}, next ${fmtDate(p.nextService)}${service ? `, ${service.left} ${service.unit} to go` : ""}`,
+              ],
+              [
+                "Maintenance",
+                p.maintenance
+                  ? `Last ${fmtDate(p.maintenance.last)}, next ${fmtDate(p.maintenance.next)}${maint ? `, ${maint.left} ${maint.unit} to go` : ""}`
+                  : "Not recorded",
+              ],
               ["Test and tag", p.tagDue ? fmtDate(p.tagDue) : "Not electrical"],
             ].map(([k, v]) => (
               <div key={k}>
@@ -104,6 +134,37 @@ export function PlantReview({ id, base }: { id: string; base: string }) {
               </div>
             ))}
           </dl>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHead
+            title="Contractor insurance"
+            sub="Public liability insurance is held with the contractor's own documents, not uploaded with the plant."
+            right={
+              <Pill tone={pl === "ok" ? "ok" : pl === "n/a" ? "neutral" : "owed"}>
+                {pl === "ok"
+                  ? "Current"
+                  : pl === "n/a"
+                    ? "Company plant"
+                    : pl === "expired"
+                      ? "Expired"
+                      : "Not on file"}
+              </Pill>
+            }
+          />
+          <p className="p-5 text-sm text-ink-soft">
+            {pl === "n/a"
+              ? "This is company plant, so there is no contractor insurance to check."
+              : pl === "ok"
+                ? `${ownerSub?.name} has current public liability insurance on file.`
+                : `${ownerSub?.name} needs current public liability insurance on file before this plant can be approved. Ask them to add it under their compliance documents.`}{" "}
+            {pl !== "n/a" && (
+              <Link href="/dashboard/subcontractors" className="font-semibold underline">
+                Open subcontractors
+              </Link>
+            )}
+          </p>
         </Card>
 
         <Card>
@@ -139,7 +200,7 @@ export function PlantReview({ id, base }: { id: string; base: string }) {
                       <input
                         type="checkbox"
                         checked={d.verified}
-                        disabled={!open || lapsed}
+                        disabled={!open || lapsed || !d.files?.length}
                         onChange={(e) =>
                           s.verifyPlantDoc(p.id, d.id, e.target.checked)
                         }
@@ -151,9 +212,9 @@ export function PlantReview({ id, base }: { id: string; base: string }) {
                   {d.files?.length ? (
                     <AttachmentStrip files={d.files} />
                   ) : (
-                    <p className="text-xs text-ink-soft">
-                      No file attached. Ask the subcontractor to supply it
-                      before you verify.
+                    <p className="text-xs font-semibold">
+                      No file attached. It cannot be verified until the file is
+                      supplied.
                     </p>
                   )}
                 </li>

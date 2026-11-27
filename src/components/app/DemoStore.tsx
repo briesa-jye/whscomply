@@ -37,9 +37,7 @@ import {
   newSiteOnboarding,
   siteOnboardingBlockers,
   siteOnboardingProblems,
-  newPlantChecks,
   plantApproval,
-  plantBlockers,
   seedSiteRequests,
   seedAudit,
   seedIncidents,
@@ -94,6 +92,13 @@ import {
   type Ticket,
   type Worker,
 } from "@/lib/data";
+import {
+  contractorPl,
+  newPlantChecks,
+  OPERATOR_LABEL,
+  plantBlockers,
+  plantTypeByKey,
+} from "@/lib/plant-types";
 import { clearFiles, type Attachment } from "@/lib/files";
 import { todayISO } from "@/lib/format";
 import {
@@ -449,16 +454,33 @@ export type NewPlant = Pick<
 export type NewPlantSubmission = {
   projectId: string;
   name: string;
-  kind: string;
+  typeKey: string;
   serial: string;
   /** "own" or a subcontractor id */
   ownerId: string;
-  operator: string;
+  capacityT: number | null;
+  flags: { roadRegistered: boolean; electrical: boolean; peopleLifting: boolean };
+  operatorMode: "own" | "labour-hire" | "mixed";
   onSiteFrom: string;
+  meter: { kind: "hours" | "km"; reading: number } | null;
   lastService: string;
   nextService: string;
+  serviceReading: { last: number; next: number } | null;
+  maintenance: {
+    last: string;
+    next: string;
+    lastReading?: number;
+    nextReading?: number;
+  };
   tagDue: string | null;
-  docs: { kind: string; expires: string | null; files: Attachment[] }[];
+  /** the profile photo of the whole machine */
+  photo: Attachment[];
+  docs: {
+    key: string;
+    kind: string;
+    expires: string | null;
+    files: Attachment[];
+  }[];
 };
 export type NewChemical = Omit<Chemical, "id" | "status">;
 export type NewDrill = Omit<Drill, "id">;
@@ -1903,6 +1925,7 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     const acct = s0.settings.account;
     const by =
       acct === "subcontractor" && sub ? sub.contact || sub.name : me.name;
+    const t = plantTypeByKey(i.typeKey);
     act(
       (s) => ({
         ...s,
@@ -1911,10 +1934,18 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
             id,
             projectId: i.projectId,
             name: i.name,
-            kind: i.kind,
+            kind: t?.label ?? i.typeKey,
+            typeKey: i.typeKey,
             serial: i.serial,
             owner,
             ownerId: i.ownerId,
+            capacityT: i.capacityT,
+            flags: i.flags,
+            operatorMode: i.operatorMode,
+            meter: i.meter ? { ...i.meter, readAt: todayISO() } : undefined,
+            serviceReading: i.serviceReading ?? undefined,
+            maintenance: i.maintenance,
+            photo: i.photo,
             lastService: i.lastService,
             nextService: i.nextService,
             tagDue: i.tagDue,
@@ -1926,18 +1957,19 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
               ownerId: i.ownerId,
               submittedAt: stamp(),
               submittedBy: by,
-              operator: i.operator,
+              operator: OPERATOR_LABEL[i.operatorMode],
               onSiteFrom: i.onSiteFrom,
               docs: i.docs.map(
                 (d, n): PlantDoc => ({
                   id: `d${n + 1}`,
+                  key: d.key,
                   kind: d.kind,
                   expires: d.expires,
                   files: d.files,
                   verified: false,
                 }),
               ),
-              inspection: newPlantChecks(),
+              inspection: newPlantChecks(i.typeKey),
             },
           },
           ...s.plant,
@@ -1957,6 +1989,7 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     const s0 = current();
     const x = s0.plant.find((p) => p.id === id);
     if (!x?.onboarding) return;
+    const t = plantTypeByKey(i.typeKey);
     act(
       (s) => ({
         ...s,
@@ -1964,8 +1997,16 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
           ...p,
           projectId: i.projectId,
           name: i.name,
-          kind: i.kind,
+          kind: t?.label ?? i.typeKey,
+          typeKey: i.typeKey,
           serial: i.serial,
+          capacityT: i.capacityT,
+          flags: i.flags,
+          operatorMode: i.operatorMode,
+          meter: i.meter ? { ...i.meter, readAt: todayISO() } : undefined,
+          serviceReading: i.serviceReading ?? undefined,
+          maintenance: i.maintenance,
+          photo: i.photo,
           lastService: i.lastService,
           nextService: i.nextService,
           tagDue: i.tagDue,
@@ -1974,18 +2015,19 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
             ...p.onboarding!,
             status: "Submitted" as const,
             submittedAt: stamp(),
-            operator: i.operator,
+            operator: OPERATOR_LABEL[i.operatorMode],
             onSiteFrom: i.onSiteFrom,
             docs: i.docs.map(
               (d, n): PlantDoc => ({
                 id: `d${n + 1}`,
+                key: d.key,
                 kind: d.kind,
                 expires: d.expires,
                 files: d.files,
                 verified: false,
               }),
             ),
-            inspection: newPlantChecks(),
+            inspection: newPlantChecks(i.typeKey),
             inspectedBy: undefined,
             inspectedAt: undefined,
             decidedAt: undefined,
@@ -2027,8 +2069,11 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
               ...p,
               onboarding: {
                 ...p.onboarding,
+                // a document with no file cannot be verified
                 docs: p.onboarding.docs.map((d) =>
-                  d.id === docId ? { ...d, verified } : d,
+                  d.id === docId && (!verified || d.files?.length)
+                    ? { ...d, verified }
+                    : d,
                 ),
               },
             }
@@ -2060,7 +2105,14 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     const s0 = current();
     const x = s0.plant.find((p) => p.id === id);
     if (!x?.onboarding || x.onboarding.status !== "Submitted") return;
-    if (decision === "Approved" && plantBlockers(x.onboarding).length) return;
+    if (
+      decision === "Approved" &&
+      plantBlockers(x.onboarding, {
+        photo: !!x.photo?.length,
+        pl: contractorPl(s0.subs.find((c) => c.id === x.ownerId)),
+      }).length
+    )
+      return;
     act(
       (s) => ({
         ...s,
