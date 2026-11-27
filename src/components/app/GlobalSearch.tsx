@@ -150,10 +150,22 @@ const PAGES: { title: string; href: string; icon: IconName; words: string }[] =
       words: "prestart service test tag defect crane ewp",
     },
     {
+      title: "Plant onboarding",
+      href: "/dashboard/plant/onboarding",
+      icon: "check",
+      words: "plant approval subcontractor hire arrival inspection documents hold point",
+    },
+    {
       title: "Hazardous chemicals",
       href: "/dashboard/chemicals",
       icon: "flag",
       words: "sds safety data sheet dangerous goods",
+    },
+    {
+      title: "Chemical onboarding",
+      href: "/dashboard/chemicals/onboarding",
+      icon: "check",
+      words: "subcontractor swms sds hold point site onboarding approval",
     },
     {
       title: "Emergency",

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Invites } from "@/components/portal/Invites";
 import { btnLight } from "@/components/app/ui";
 import { usePortal } from "@/components/portal/usePortal";
@@ -68,6 +69,51 @@ export default function PortalProjects() {
                     <dd className="font-semibold">{fmtDate(pr.start)}</dd>
                   </div>
                 </dl>
+                {(() => {
+                  const ob = p.siteOnboardings.find(
+                    (o) => o.subId === p.subId && o.projectId === pr.id,
+                  );
+                  if (!ob) return null;
+                  const todo = ob.status === "Draft" || ob.status === "Declined";
+                  return (
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
+                      <span className="text-sm">
+                        <span className="font-semibold">Site onboarding</span>
+                        <span className="block text-xs text-ink-soft">
+                          Your SWMS and safety data sheets. Your crew cannot
+                          start until it is approved.
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <Pill
+                          tone={
+                            ob.status === "Approved"
+                              ? "ok"
+                              : todo
+                                ? "owed"
+                                : "neutral"
+                          }
+                        >
+                          {ob.status === "Draft"
+                            ? "To complete"
+                            : ob.status === "Submitted"
+                              ? "Waiting for the builder"
+                              : ob.status}
+                        </Pill>
+                        <Link
+                          href={`/portal/onboarding/${pr.id}`}
+                          className={`${btnLight} !px-3 !py-1.5 text-xs`}
+                        >
+                          {ob.status === "Draft"
+                            ? "Complete onboarding"
+                            : ob.status === "Declined"
+                              ? "Correct and resend"
+                              : "View"}
+                        </Link>
+                      </span>
+                    </div>
+                  );
+                })()}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
                   {asked ? (
                     <Pill tone="owed">

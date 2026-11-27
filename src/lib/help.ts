@@ -330,13 +330,33 @@ Photos added to diary entries, defects, incidents, inspection items and safety d
     title: "Plant and equipment",
     category: "Plant and materials",
     icon: "settings",
-    summary: "Pre-starts, services, test and tag, and defects.",
+    summary: "Onboard plant, then track pre-starts, services, test and tag, and defects.",
     open: { href: "/dashboard/plant", label: "Open plant" },
-    body: `## The register
-Add each item with its serial, owner, next service date and, for electrical items, the test and tag date.
+    body: `## Onboarding comes first
+Plant is not added straight to the register. Choose **Onboard plant** (or open **Plant onboarding**) and put it forward for a site, whether it is yours or a subcontractor's. You then verify each document, inspect the plant when it arrives, and choose **Approve for site**. You can decline it with a reason. Plant that is not approved cannot be used and does not appear in the register.
 
-## Each day
-Choose **Log pre-start** once a day. Items without one show that no pre-start is done today.
+Subcontractors put their own plant forward from their portal under **My plant**. They can only choose a site they have been allocated to, and they see why anything is declined, so they can correct it and send it again.
+
+## What each type of plant has to supply
+Pick the type of plant first and the form asks for what that type needs. Every field, document and file is required, and so is a photo of the whole machine.
+- **Every type:** the manufacturer's instructions, evidence of the logbook (recent entries), the plant risk assessment, service and maintenance dates, and the meter reading for plant with an hours or kilometre meter.
+- **Registration:** design registration and item registration are separate documents. Tower cranes, concrete booms and mobile cranes over 10 tonnes need both. Boom-type EWPs and hoists that lift people need design registration only. Road registration is asked for when the plant is road registered, and is always needed for mobile cranes and portable concrete booms.
+- **Cranes:** a CraneSafe inspection report, the 10 yearly major inspection report, the lifting equipment register and the load chart. Tower plant also needs the engineer's specifications and design for its base. A tower crane's commissioning paperwork is not needed at onboarding because it is installed later: upload it afterwards from the plant's page (or the contractor's portal), verify it, and until then the crane cannot be pre-started.
+- **Concrete booms:** a line thickness test report.
+- **Insurance:** public liability insurance is not uploaded with the plant. It is checked against the contractor's own compliance documents, and plant cannot be approved if that is missing or expired.
+
+Service is the scheduled check-up, fluid and part changes, or a call-out to fix a fault. Maintenance is routine care. Each has its own due date and, for plant with a meter, its own due reading in hours or kilometres.
+
+## The register
+Approved plant is grouped by site, with company plant and contractor plant shown separately, the project on every row and the plant's photo. Contractor plant is labelled. Choose **Take off site** when it leaves, and **Return to site** to bring it back.
+
+## Operators and the daily pre-start
+Open a piece of plant to choose its operators. They are picked from people inducted to that site, including labour hire, and each needs the right licence or competency for the plant type. Plant cannot be pre-started until it has an operator.
+
+Choose **Log pre-start** once a day. It opens its own page: pick who is operating it, enter the meter reading (it cannot be lower than the last one), and answer the daily checks. A failed check takes the plant out of service. Items without a pre-start show that none is done today.
+
+## Service and maintenance
+Choose **Record service** or **Record maintenance** to open its page. Enter the reading it was done at and when it is next due, by date and by meter. Plant that is close to or past a due reading appears in your needs-action list.
 
 ## Defects
 **Report defect** takes an item **out of service** and puts it in your needs-attention list. Choose **Return to service** once it is fixed.
@@ -350,10 +370,15 @@ Choose **Log pre-start** once a day. Items without one show that no pre-start is
     category: "Plant and materials",
     icon: "flag",
     summary:
-      "Keep a register with a current safety data sheet for each product.",
+      "Keep a register with a current safety data sheet for each product, and onboard subcontractors' SWMS and SDS.",
     open: { href: "/dashboard/chemicals", label: "Open chemicals" },
-    body: `## The register
-Add each hazardous chemical with its supplier, hazard class, quantity and where it is stored. Attach the safety data sheet file.
+    body: `## Subcontractor onboarding
+When a subcontractor accepts an invitation to a project, an onboarding starts for that project. It supplies its SWMS and a safety data sheet for every hazardous chemical it will bring, or says it will bring none. Plant can be skipped at first and put forward later.
+
+Open **Chemical onboarding** to review it. Verify each SWMS and SDS, then choose **Approve for site**. You can decline with a reason, and the subcontractor corrects it and sends it again. This is a hold point: until you approve it, that subcontractor's workers cannot be approved for the site or signed on. Approved chemicals go onto the register, labelled with the subcontractor.
+
+## The register
+Add each hazardous chemical with its supplier, hazard class, quantity and where it is stored. Attach the safety data sheet file. Choose **Add chemical** for your own chemicals; it opens its own page.
 
 ## Keeping SDSs current
 - Products with **no SDS** are flagged.

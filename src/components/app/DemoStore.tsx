@@ -33,6 +33,11 @@ import {
   seedVisitors,
   seedGateLog,
   seedMeetingTemplates,
+  seedSiteOnboardings,
+  newSiteOnboarding,
+  siteOnboardingBlockers,
+  siteOnboardingProblems,
+  plantApproval,
   seedSiteRequests,
   seedAudit,
   seedIncidents,
@@ -64,6 +69,9 @@ import {
   type Visitor,
   type GateEvent,
   type MeetingTemplate,
+  type SiteOnboarding,
+  type PlantCheck,
+  type PlantDoc,
   type SiteRequest,
   type AuditArea,
   type AuditEvent,
@@ -84,6 +92,15 @@ import {
   type Ticket,
   type Worker,
 } from "@/lib/data";
+import {
+  operatorCheck,
+  plantCommissioned,
+  contractorPl,
+  newPlantChecks,
+  OPERATOR_LABEL,
+  plantBlockers,
+  plantTypeByKey,
+} from "@/lib/plant-types";
 import { clearFiles, type Attachment } from "@/lib/files";
 import { todayISO } from "@/lib/format";
 import {
@@ -141,6 +158,8 @@ type Saved = {
   siteRequests: SiteRequest[];
   /** what each kind of meeting records, edited by the client */
   meetingTemplates: MeetingTemplate[];
+  /** each subcontractor's SWMS and SDS onboarding for each project it works on */
+  siteOnboardings: SiteOnboarding[];
   iso: IsoState;
 };
 
@@ -177,6 +196,7 @@ const SEED: Saved = {
   gateLog: seedGateLog,
   siteRequests: seedSiteRequests,
   meetingTemplates: seedMeetingTemplates,
+  siteOnboardings: seedSiteOnboardings,
   iso: {
     profile: {
       company: seedSettings.company.name,
@@ -252,6 +272,7 @@ function migrate(p: Saved): Saved {
     gateLog: p.gateLog ?? [],
     siteRequests: p.siteRequests ?? [],
     meetingTemplates: p.meetingTemplates ?? seedMeetingTemplates,
+    siteOnboardings: p.siteOnboardings ?? seedSiteOnboardings,
   };
 }
 
@@ -431,6 +452,39 @@ export type NewPlant = Pick<
   Plant,
   "projectId" | "name" | "kind" | "serial" | "owner" | "nextService" | "tagDue"
 >;
+/** Plant put forward for a site, by a subcontractor from its portal or by the builder. */
+export type NewPlantSubmission = {
+  projectId: string;
+  name: string;
+  typeKey: string;
+  serial: string;
+  /** "own" or a subcontractor id */
+  ownerId: string;
+  capacityT: number | null;
+  flags: { roadRegistered: boolean; electrical: boolean; peopleLifting: boolean };
+  operatorMode: "own" | "labour-hire" | "mixed";
+  onSiteFrom: string;
+  meter: { kind: "hours" | "km"; reading: number } | null;
+  lastService: string;
+  nextService: string;
+  serviceReading: { last: number; next: number } | null;
+  maintenance: {
+    last: string;
+    next: string;
+    lastReading?: number;
+    nextReading?: number;
+  };
+  tagDue: string | null;
+  /** the profile photo of the whole machine */
+  photo: Attachment[];
+  docs: {
+    key: string;
+    kind: string;
+    expires: string | null;
+    files: Attachment[];
+    later?: boolean;
+  }[];
+};
 export type NewChemical = Omit<Chemical, "id" | "status">;
 export type NewDrill = Omit<Drill, "id">;
 export type NewVisitor = Pick<
@@ -494,8 +548,43 @@ type Store = Saved & {
   setPermitStatus: (id: string, status: Permit["status"]) => void;
 
   addPlant: (i: NewPlant) => void;
+  submitPlant: (i: NewPlantSubmission) => string;
+  resubmitPlant: (id: string, i: NewPlantSubmission) => void;
+  withdrawPlant: (id: string) => void;
+  verifyPlantDoc: (id: string, docId: string, verified: boolean) => void;
+  setPlantCheck: (
+    id: string,
+    checkId: string,
+    result: PlantCheck["result"],
+    note?: string,
+  ) => void;
+  decidePlant: (
+    id: string,
+    decision: "Approved" | "Declined",
+    note?: string,
+  ) => void;
   logPrestart: (id: string) => void;
   logService: (id: string, nextService: string) => void;
+  /** add or remove someone from the people who may operate a piece of plant */
+  setPlantOperator: (id: string, workerId: string, on: boolean) => void;
+  /** attach files to a plant document, such as commissioning paperwork supplied after onboarding */
+  setPlantDocFiles: (id: string, docId: string, files: Attachment[]) => void;
+  /** the daily pre-start: who operated it, the meter reading, and the checks */
+  logPlantPrestart: (
+    id: string,
+    i: {
+      operatorId: string;
+      reading: number | null;
+      checks: { text: string; result: "pass" | "fail" | "na" }[];
+      note: string;
+    },
+  ) => void;
+  /** record a service or maintenance, with the reading it was done at and when it is next due */
+  recordPlantCare: (
+    id: string,
+    kind: "service" | "maintenance",
+    i: { readingNow: number | null; nextDate: string; nextReading: number | null },
+  ) => void;
   setPlantStatus: (
     id: string,
     status: Plant["status"],
@@ -504,6 +593,26 @@ type Store = Saved & {
   tagPlant: (id: string, nextDue: string) => void;
 
   addChemical: (i: NewChemical) => void;
+  /** open, or find, a subcontractor's onboarding for a project */
+  startSiteOnboarding: (subId: string, projectId: string) => string;
+  saveSiteOnboarding: (
+    id: string,
+    patch: Partial<
+      Pick<SiteOnboarding, "swms" | "chemicals" | "noChemicals" | "plantLater">
+    >,
+  ) => void;
+  submitSiteOnboarding: (id: string) => void;
+  verifySiteItem: (
+    id: string,
+    list: "swms" | "chemicals",
+    itemId: string,
+    verified: boolean,
+  ) => void;
+  decideSiteOnboarding: (
+    id: string,
+    decision: "Approved" | "Declined",
+    note?: string,
+  ) => void;
   updateChemical: (id: string, patch: Partial<Chemical>) => void;
 
   addDrill: (i: NewDrill) => void;
@@ -1813,6 +1922,7 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     ),
   logPrestart: (id) => {
     const x = current().plant.find((p) => p.id === id);
+    if (x && plantApproval(x) !== "Approved") return;
     act(
       (s) => ({
         ...s,
@@ -1827,6 +1937,356 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
         `completed the pre-start for ${x?.name ?? "plant"}`,
         "Not checked",
         "Checked",
+      ),
+    );
+  },
+  submitPlant: (i) => {
+    const s0 = current();
+    const id = `pl-${uid()}`;
+    const sub = s0.subs.find((x) => x.id === i.ownerId);
+    const owner = i.ownerId === "own" || !sub ? "Owned" : sub.name;
+    const acct = s0.settings.account;
+    const by =
+      acct === "subcontractor" && sub ? sub.contact || sub.name : me.name;
+    const t = plantTypeByKey(i.typeKey);
+    act(
+      (s) => ({
+        ...s,
+        plant: [
+          {
+            id,
+            projectId: i.projectId,
+            name: i.name,
+            kind: t?.label ?? i.typeKey,
+            typeKey: i.typeKey,
+            serial: i.serial,
+            owner,
+            ownerId: i.ownerId,
+            capacityT: i.capacityT,
+            flags: i.flags,
+            operatorMode: i.operatorMode,
+            meter: i.meter ? { ...i.meter, readAt: todayISO() } : undefined,
+            serviceReading: i.serviceReading ?? undefined,
+            maintenance: i.maintenance,
+            photo: i.photo,
+            lastService: i.lastService,
+            nextService: i.nextService,
+            tagDue: i.tagDue,
+            lastPrestart: null,
+            status: "Off site" as const,
+            defect: "",
+            onboarding: {
+              status: "Submitted" as const,
+              ownerId: i.ownerId,
+              submittedAt: stamp(),
+              submittedBy: by,
+              operator: OPERATOR_LABEL[i.operatorMode],
+              onSiteFrom: i.onSiteFrom,
+              docs: i.docs.map(
+                (d, n): PlantDoc => ({
+                  id: `d${n + 1}`,
+                  key: d.key,
+                  later: d.later,
+                  kind: d.kind,
+                  expires: d.expires,
+                  files: d.files,
+                  verified: false,
+                }),
+              ),
+              inspection: newPlantChecks(i.typeKey),
+            },
+          },
+          ...s.plant,
+        ],
+      }),
+      ev(
+        "Plant",
+        i.projectId,
+        `put ${i.name} forward for ${projectName(s0, i.projectId)}`,
+        "Not on site",
+        "Submitted",
+      ),
+    );
+    return id;
+  },
+  resubmitPlant: (id, i) => {
+    const s0 = current();
+    const x = s0.plant.find((p) => p.id === id);
+    if (!x?.onboarding) return;
+    const t = plantTypeByKey(i.typeKey);
+    act(
+      (s) => ({
+        ...s,
+        plant: patchIn(s.plant, id, (p) => ({
+          ...p,
+          projectId: i.projectId,
+          name: i.name,
+          kind: t?.label ?? i.typeKey,
+          typeKey: i.typeKey,
+          serial: i.serial,
+          capacityT: i.capacityT,
+          flags: i.flags,
+          operatorMode: i.operatorMode,
+          meter: i.meter ? { ...i.meter, readAt: todayISO() } : undefined,
+          serviceReading: i.serviceReading ?? undefined,
+          maintenance: i.maintenance,
+          photo: i.photo,
+          lastService: i.lastService,
+          nextService: i.nextService,
+          tagDue: i.tagDue,
+          status: "Off site" as const,
+          onboarding: {
+            ...p.onboarding!,
+            status: "Submitted" as const,
+            submittedAt: stamp(),
+            operator: OPERATOR_LABEL[i.operatorMode],
+            onSiteFrom: i.onSiteFrom,
+            docs: i.docs.map(
+              (d, n): PlantDoc => ({
+                id: `d${n + 1}`,
+                key: d.key,
+                later: d.later,
+                kind: d.kind,
+                expires: d.expires,
+                files: d.files,
+                verified: false,
+              }),
+            ),
+            inspection: newPlantChecks(i.typeKey),
+            inspectedBy: undefined,
+            inspectedAt: undefined,
+            decidedAt: undefined,
+            decidedBy: undefined,
+            note: undefined,
+            conditions: undefined,
+          },
+        })),
+      }),
+      ev(
+        "Plant",
+        i.projectId,
+        `resubmitted ${i.name} for ${projectName(s0, i.projectId)}`,
+        "Declined",
+        "Submitted",
+      ),
+    );
+  },
+  withdrawPlant: (id) => {
+    const x = current().plant.find((p) => p.id === id);
+    if (!x?.onboarding || x.onboarding.status !== "Submitted") return;
+    act(
+      (s) => ({
+        ...s,
+        plant: patchIn(s.plant, id, (p) => ({
+          ...p,
+          onboarding: { ...p.onboarding!, status: "Withdrawn" as const },
+        })),
+      }),
+      ev("Plant", x.projectId, `withdrew ${x.name}`, "Submitted", "Withdrawn"),
+    );
+  },
+  verifyPlantDoc: (id, docId, verified) =>
+    update((s) => ({
+      ...s,
+      plant: patchIn(s.plant, id, (p) =>
+        p.onboarding
+          ? {
+              ...p,
+              onboarding: {
+                ...p.onboarding,
+                // a document with no file cannot be verified
+                docs: p.onboarding.docs.map((d) =>
+                  d.id === docId && (!verified || d.files?.length)
+                    ? { ...d, verified }
+                    : d,
+                ),
+              },
+            }
+          : p,
+      ),
+    })),
+  setPlantCheck: (id, checkId, result, note) =>
+    update((s) => ({
+      ...s,
+      plant: patchIn(s.plant, id, (p) =>
+        p.onboarding
+          ? {
+              ...p,
+              onboarding: {
+                ...p.onboarding,
+                inspection: p.onboarding.inspection.map((c) =>
+                  c.id === checkId
+                    ? { ...c, result, note: note ?? c.note }
+                    : c,
+                ),
+                inspectedBy: me.name,
+                inspectedAt: stamp(),
+              },
+            }
+          : p,
+      ),
+    })),
+  decidePlant: (id, decision, note) => {
+    const s0 = current();
+    const x = s0.plant.find((p) => p.id === id);
+    if (!x?.onboarding || x.onboarding.status !== "Submitted") return;
+    if (
+      decision === "Approved" &&
+      plantBlockers(x.onboarding, {
+        photo: !!x.photo?.length,
+        pl: contractorPl(s0.subs.find((c) => c.id === x.ownerId)),
+      }).length
+    )
+      return;
+    act(
+      (s) => ({
+        ...s,
+        plant: patchIn(s.plant, id, (p) => ({
+          ...p,
+          status: decision === "Approved" ? ("In service" as const) : ("Off site" as const),
+          onboarding: {
+            ...p.onboarding!,
+            status: decision,
+            decidedAt: stamp(),
+            decidedBy: me.name,
+            conditions:
+              decision === "Approved" ? note?.trim() || undefined : undefined,
+            note: decision === "Declined" ? note?.trim() || undefined : undefined,
+          },
+        })),
+      }),
+      ev(
+        "Plant",
+        x.projectId,
+        `${decision === "Approved" ? "approved" : "declined"} ${x.name} for ${projectName(s0, x.projectId)}`,
+        "Submitted",
+        decision,
+      ),
+    );
+  },
+  setPlantDocFiles: (id, docId, files) =>
+    update((s) => ({
+      ...s,
+      plant: patchIn(s.plant, id, (p) =>
+        p.onboarding
+          ? {
+              ...p,
+              onboarding: {
+                ...p.onboarding,
+                docs: p.onboarding.docs.map((d) =>
+                  d.id === docId
+                    ? { ...d, files, verified: files.length ? d.verified : false }
+                    : d,
+                ),
+              },
+            }
+          : p,
+      ),
+    })),
+  setPlantOperator: (id, workerId, on) =>
+    update((s) => ({
+      ...s,
+      plant: patchIn(s.plant, id, (p) => {
+        const cur = p.operators ?? [];
+        return {
+          ...p,
+          operators: on
+            ? cur.includes(workerId)
+              ? cur
+              : [...cur, workerId]
+            : cur.filter((w) => w !== workerId),
+        };
+      }),
+    })),
+  logPlantPrestart: (id, i) => {
+    const s0 = current();
+    const x = s0.plant.find((p) => p.id === id);
+    if (!x || plantApproval(x) !== "Approved" || x.status !== "In service") return;
+    if (!plantCommissioned(x)) return;
+    const w = s0.workers.find((y) => y.id === i.operatorId);
+    if (!w || !w.inducted.includes(x.projectId) || !operatorCheck(w, x).ok) return;
+    if (x.typeKey && !(x.operators ?? []).includes(i.operatorId)) return;
+    if (x.meter && (i.reading === null || i.reading < x.meter.reading)) return;
+    const fails = i.checks.filter((c) => c.result === "fail").map((c) => c.text);
+    const failed = fails.length > 0;
+    const defect = failed ? i.note.trim() || fails.join("; ") : "";
+    act(
+      (s) => ({
+        ...s,
+        plant: patchIn(s.plant, id, (p) => ({
+          ...p,
+          lastPrestart: todayISO(),
+          meter:
+            p.meter && i.reading !== null
+              ? { ...p.meter, reading: i.reading, readAt: todayISO() }
+              : p.meter,
+          status: failed ? ("Out of service" as const) : p.status,
+          defect: failed ? defect : p.defect,
+          prestarts: [
+            {
+              at: stamp(),
+              operatorId: i.operatorId,
+              reading: i.reading,
+              result: failed ? ("fail" as const) : ("pass" as const),
+              note: i.note.trim(),
+            },
+            ...(p.prestarts ?? []),
+          ].slice(0, 30),
+        })),
+      }),
+      ev(
+        "Plant",
+        x.projectId,
+        `${failed ? "failed" : "completed"} the pre-start for ${x.name}, operated by ${w.name}`,
+        "Not checked",
+        failed ? "Defect found" : "Checked",
+      ),
+    );
+  },
+  recordPlantCare: (id, kind, i) => {
+    const x = current().plant.find((p) => p.id === id);
+    if (!x) return;
+    act(
+      (s) => ({
+        ...s,
+        plant: patchIn(s.plant, id, (p) => {
+          const meter =
+            p.meter && i.readingNow !== null
+              ? {
+                  ...p.meter,
+                  reading: Math.max(p.meter.reading, i.readingNow),
+                  readAt: todayISO(),
+                }
+              : p.meter;
+          if (kind === "service")
+            return {
+              ...p,
+              meter,
+              lastService: todayISO(),
+              nextService: i.nextDate,
+              serviceReading:
+                p.meter && i.readingNow !== null && i.nextReading !== null
+                  ? { last: i.readingNow, next: i.nextReading }
+                  : p.serviceReading,
+            };
+          return {
+            ...p,
+            meter,
+            maintenance: {
+              last: todayISO(),
+              next: i.nextDate,
+              lastReading: i.readingNow ?? p.maintenance?.lastReading,
+              nextReading: i.nextReading ?? p.maintenance?.nextReading,
+            },
+          };
+        }),
+      }),
+      ev(
+        "Plant",
+        x.projectId,
+        `recorded ${kind === "service" ? "a service" : "maintenance"} for ${x.name}`,
+        kind === "service" ? x.lastService : (x.maintenance?.last ?? "Not recorded"),
+        todayISO(),
       ),
     );
   },
@@ -1887,6 +2347,131 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     );
   },
 
+  startSiteOnboarding: (subId, projectId) => {
+    const existing = current().siteOnboardings.find(
+      (o) => o.subId === subId && o.projectId === projectId,
+    );
+    if (existing) return existing.id;
+    const id = `so-${uid()}`;
+    update((s) => ({
+      ...s,
+      siteOnboardings: [
+        newSiteOnboarding(id, subId, projectId, stamp()),
+        ...s.siteOnboardings,
+      ],
+    }));
+    return id;
+  },
+  saveSiteOnboarding: (id, patch) =>
+    update((s) => ({
+      ...s,
+      siteOnboardings: s.siteOnboardings.map((o) =>
+        o.id === id && (o.status === "Draft" || o.status === "Declined")
+          ? { ...o, ...patch }
+          : o,
+      ),
+    })),
+  submitSiteOnboarding: (id) => {
+    const s0 = current();
+    const o = s0.siteOnboardings.find((x) => x.id === id);
+    if (!o || (o.status !== "Draft" && o.status !== "Declined")) return;
+    if (siteOnboardingProblems(o).length) return;
+    const sub = s0.subs.find((x) => x.id === o.subId);
+    act(
+      (s) => ({
+        ...s,
+        siteOnboardings: s.siteOnboardings.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                status: "Submitted" as const,
+                submittedAt: stamp(),
+                submittedBy: sub?.contact || sub?.name || "Subcontractor",
+                decidedAt: undefined,
+                decidedBy: undefined,
+                note: undefined,
+                // a fresh review each time it is sent
+                swms: x.swms.map((i) => ({ ...i, verified: false })),
+                chemicals: x.chemicals.map((i) => ({ ...i, verified: false })),
+              }
+            : x,
+        ),
+      }),
+      ev(
+        "Chemicals",
+        o.projectId,
+        `submitted its SWMS and SDS for ${projectName(s0, o.projectId)}`,
+        o.status,
+        "Submitted",
+      ),
+    );
+  },
+  verifySiteItem: (id, list, itemId, verified) =>
+    update((s) => ({
+      ...s,
+      siteOnboardings: s.siteOnboardings.map((o) =>
+        o.id === id && o.status === "Submitted"
+          ? {
+              ...o,
+              [list]: (o[list] as { id: string; verified: boolean }[]).map(
+                (i) => (i.id === itemId ? { ...i, verified } : i),
+              ),
+            }
+          : o,
+      ),
+    })),
+  decideSiteOnboarding: (id, decision, note) => {
+    const s0 = current();
+    const o = s0.siteOnboardings.find((x) => x.id === id);
+    if (!o || o.status !== "Submitted") return;
+    if (decision === "Approved" && siteOnboardingBlockers(o).length) return;
+    const sub = s0.subs.find((x) => x.id === o.subId);
+    act(
+      (s) => ({
+        ...s,
+        siteOnboardings: s.siteOnboardings.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                status: decision,
+                decidedAt: stamp(),
+                decidedBy: me.name,
+                note: decision === "Declined" ? note?.trim() || undefined : undefined,
+              }
+            : x,
+        ),
+        // approved chemicals go onto the builder's register for this project
+        chemicals:
+          decision === "Approved"
+            ? [
+                ...o.chemicals.map((c) => ({
+                  id: `ch-${uid()}`,
+                  projectId: o.projectId,
+                  name: c.name,
+                  supplier: c.supplier,
+                  hazard: c.hazard,
+                  quantity: c.quantity,
+                  location: c.location,
+                  hasSds: true,
+                  sdsDate: c.sdsDate,
+                  controls: `Brought by ${sub?.name ?? "a subcontractor"}. Follow the safety data sheet and the subcontractor's SWMS.`,
+                  status: "In use" as const,
+                  files: c.files,
+                  ownerId: o.subId,
+                })),
+                ...s.chemicals,
+              ]
+            : s.chemicals,
+      }),
+      ev(
+        "Chemicals",
+        o.projectId,
+        `${decision === "Approved" ? "approved" : "declined"} ${sub?.name ?? "the subcontractor"}'s site onboarding for ${projectName(s0, o.projectId)}`,
+        "Submitted",
+        decision,
+      ),
+    );
+  },
   addChemical: (i) =>
     act(
       (s) => ({
@@ -2308,6 +2893,22 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
                 : { ...x, projects: [...x.projects, inv.projectId] },
             )
           : s.subs,
+        // being allocated to a project starts its SWMS and SDS onboarding
+        siteOnboardings:
+          accept &&
+          !s.siteOnboardings.some(
+            (o) => o.subId === inv.subId && o.projectId === inv.projectId,
+          )
+            ? [
+                newSiteOnboarding(
+                  `so-${uid()}`,
+                  inv.subId,
+                  inv.projectId,
+                  stamp(),
+                ),
+                ...s.siteOnboardings,
+              ]
+            : s.siteOnboardings,
       }),
       ev(
         "People",

@@ -1,16 +1,19 @@
 import { todayISO } from "./format";
+import { plantLaterDocs, readingLeft, readingTone } from "./plant-types";
 import {
   daysUntil,
   expiryOf,
   meetingDue,
   meetingHref,
   meetingStatus,
+  plantApproval,
   type Action,
   type Chemical,
   type Defect,
   type Inspection,
   type InspectionSchedule,
   type Rfi,
+  type SiteOnboarding,
   type SiteRequest,
   type Doc,
   type Drill,
@@ -85,6 +88,7 @@ type Input = {
   schedules: InspectionSchedule[];
   inspections: Inspection[];
   requests: SiteRequest[];
+  onboardings: SiteOnboarding[];
   warnDays: number;
   notify: {
     tickets: boolean;
@@ -94,6 +98,7 @@ type Input = {
   };
   projectName: (id: string) => string;
   workerName: (id: string) => string;
+  subName: (id: string) => string;
 };
 
 const ini = (n: string) =>
@@ -288,6 +293,24 @@ export function attentionFor(i: Input): Attention[] {
   }
 
   for (const p of i.plant) {
+    const approval = plantApproval(p);
+    if (approval === "Submitted") {
+      out.push({
+        id: `pl-${p.id}-onb`,
+        kind: "plant",
+        title: `Plant waiting for approval: ${p.name}`,
+        where: `${p.owner} · ${i.projectName(p.projectId)}`,
+        due: "Waiting for review",
+        href: `/dashboard/plant/onboarding/${p.id}`,
+        tone: "owed",
+        // plant cannot start work until this is decided, so it leads the list
+        rank: -800,
+        who: ini(p.owner),
+        projectId: p.projectId,
+      });
+      continue;
+    }
+    if (approval !== "Approved") continue;
     if (p.status === "Out of service")
       out.push({
         id: `pl-${p.id}-oos`,
@@ -401,6 +424,70 @@ export function attentionFor(i: Input): Attention[] {
       rank: n,
       who: ini(d.owner),
       projectId: d.projectId,
+    });
+  }
+
+  // service by meter reading, and maintenance by date or reading
+  for (const p of i.plant) {
+    if (plantApproval(p) !== "Approved" || p.status === "Off site") continue;
+    // commissioning paperwork has been uploaded and is waiting to be checked
+    if (plantLaterDocs(p).some((d) => d.files?.length && !d.verified))
+      out.push({
+        id: `pl-${p.id}-comm`,
+        kind: "plant",
+        title: `Commissioning paperwork to verify: ${p.name}`,
+        where: i.projectName(p.projectId),
+        due: "Cannot be used until verified",
+        href: `/dashboard/plant/${p.id}`,
+        tone: "owed",
+        rank: -700,
+        who: ini(p.name),
+        projectId: p.projectId,
+      });
+    for (const which of ["service", "maintenance"] as const) {
+      const left = readingLeft(p, which);
+      const days =
+        which === "maintenance" && p.maintenance
+          ? daysUntil(p.maintenance.next)
+          : null;
+      const byReading = !!left && readingTone(left.left, left.unit) === "owed";
+      const byDate = days !== null && days <= 7;
+      if (!byReading && !byDate) continue;
+      const overdue = (byReading && left!.left < 0) || (days !== null && days < 0);
+      out.push({
+        id: `pl-${p.id}-${which}-m`,
+        kind: "plant",
+        title: `${which === "service" ? "Service" : "Maintenance"} due: ${p.name}`,
+        where: i.projectName(p.projectId),
+        due:
+          byReading && left
+            ? left.left < 0
+              ? `Overdue by ${-left.left} ${left.unit}`
+              : `In ${left.left} ${left.unit}`
+            : dueText(days as number),
+        href: `/dashboard/plant/${p.id}/care?kind=${which}`,
+        tone: overdue ? "owed" : "neutral",
+        rank: byReading && left ? left.left : (days as number),
+        who: ini(p.name),
+        projectId: p.projectId,
+      });
+    }
+  }
+
+  for (const o of i.onboardings) {
+    if (o.status !== "Submitted") continue;
+    out.push({
+      id: `so-${o.id}`,
+      kind: "chemical",
+      title: `Site onboarding to review: ${i.subName(o.subId)}`,
+      where: i.projectName(o.projectId),
+      due: "SWMS and SDS waiting for approval",
+      href: `/dashboard/chemicals/onboarding/${o.id}`,
+      tone: "owed",
+      // its workers cannot start until this is decided, so it leads the list
+      rank: -800,
+      who: ini(i.subName(o.subId)),
+      projectId: o.projectId,
     });
   }
 

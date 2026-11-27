@@ -1,4 +1,5 @@
 import type { Invoice } from "./billing";
+import { newPlantChecks } from "./plant-types";
 import type { BuilderPlan } from "./plans";
 import type { Attachment } from "./files";
 import { todayISO } from "./format";
@@ -473,7 +474,95 @@ export type Plant = {
   lastPrestart: string | null;
   status: "In service" | "Out of service" | "Off site";
   defect: string;
+  /** "own" for the builder's plant, or the subcontractor id that brought it to site. Missing means the builder's. */
+  ownerId?: string;
+  /** how it was approved to work on site. Missing on older records, which count as approved. */
+  onboarding?: PlantOnboarding;
+  /** the plant type, which decides what it has to supply. Older records only have `kind`. */
+  typeKey?: string;
+  /** rated capacity in tonnes, for mobile cranes */
+  capacityT?: number | null;
+  flags?: { roadRegistered: boolean; electrical: boolean; peopleLifting: boolean };
+  operatorMode?: "own" | "labour-hire" | "mixed";
+  /** the meter that service and maintenance run on */
+  meter?: { kind: "hours" | "km"; reading: number; readAt: string };
+  /** service readings, when the plant has a meter */
+  serviceReading?: { last: number; next: number };
+  /** routine care between services */
+  maintenance?: {
+    last: string;
+    next: string;
+    lastReading?: number;
+    nextReading?: number;
+  };
+  /** the profile photo of the whole machine */
+  photo?: Attachment[];
+  /** workers who may operate it, chosen from those inducted to its site */
+  operators?: string[];
+  /** the daily pre-starts, newest first */
+  prestarts?: PlantPrestart[];
 };
+
+/** One daily pre-start: who operated the plant and what the meter read. */
+export type PlantPrestart = {
+  /** "yyyy-mm-dd hh:mm" */
+  at: string;
+  operatorId: string;
+  reading: number | null;
+  result: "pass" | "fail";
+  note: string;
+};
+
+/** A document supplied for plant going onto a site, checked by the builder. */
+export type PlantDoc = {
+  id: string;
+  kind: string;
+  expires: string | null;
+  files?: Attachment[];
+  verified: boolean;
+  /** which requirement it answers, from the plant type table */
+  key?: string;
+  /** uploaded after onboarding rather than with the submission */
+  later?: boolean;
+};
+
+export type PlantCheck = {
+  id: string;
+  text: string;
+  result: "pass" | "fail" | "na" | null;
+  note: string;
+};
+
+/**
+ * The hold point for plant: it cannot be used on site until the PCBU has checked the
+ * documents, inspected it on arrival and approved it.
+ */
+export type PlantOnboarding = {
+  status: "Submitted" | "Approved" | "Declined" | "Withdrawn";
+  /** "own" or the subcontractor id */
+  ownerId: string;
+  /** "yyyy-mm-dd hh:mm" */
+  submittedAt: string;
+  submittedBy: string;
+  /** operator name and licence number */
+  operator: string;
+  /** planned arrival on site, "yyyy-mm-dd" */
+  onSiteFrom: string;
+  docs: PlantDoc[];
+  /** the arrival inspection */
+  inspection: PlantCheck[];
+  inspectedBy?: string;
+  inspectedAt?: string;
+  /** conditions attached to an approval */
+  conditions?: string;
+  decidedAt?: string;
+  decidedBy?: string;
+  /** why it was declined */
+  note?: string;
+};
+
+export const plantApproval = (p: Pick<Plant, "onboarding">) =>
+  p.onboarding?.status ?? "Approved";
 
 export type Chemical = {
   id: string;
@@ -490,7 +579,118 @@ export type Chemical = {
   status: "In use" | "Removed";
   /** the safety data sheet itself */
   files?: Attachment[];
+  /** the subcontractor that brought it to site. Missing means the builder's. */
+  ownerId?: string;
 };
+
+/** A subcontractor's SWMS for its work on one project. */
+export type OnboardingSwms = {
+  id: string;
+  /** the work it covers */
+  title: string;
+  files: Attachment[];
+  verified: boolean;
+};
+
+/** A hazardous chemical a subcontractor will bring to one project, with its safety data sheet. */
+export type OnboardingSds = {
+  id: string;
+  name: string;
+  supplier: string;
+  hazard: string;
+  quantity: string;
+  location: string;
+  /** SDS issue date, "yyyy-mm-dd" */
+  sdsDate: string | null;
+  files: Attachment[];
+  verified: boolean;
+};
+
+/**
+ * What a subcontractor supplies before it starts work on a project: its SWMS and a safety data
+ * sheet for every hazardous chemical it will bring. Created when it is allocated to the project.
+ * Until the builder approves it, the subcontractor's workers cannot be approved or signed on.
+ * Plant can be skipped here and put forward separately once it is ready to come to site.
+ */
+export type SiteOnboarding = {
+  id: string;
+  subId: string;
+  projectId: string;
+  status: "Draft" | "Submitted" | "Approved" | "Declined";
+  swms: OnboardingSwms[];
+  chemicals: OnboardingSds[];
+  /** the subcontractor says it will bring no hazardous chemicals */
+  noChemicals: boolean;
+  /** plant is skipped for now and submitted later */
+  plantLater: boolean;
+  /** "yyyy-mm-dd hh:mm" */
+  startedAt: string;
+  submittedAt?: string;
+  submittedBy?: string;
+  decidedAt?: string;
+  decidedBy?: string;
+  /** why it was declined */
+  note?: string;
+};
+
+export const newSiteOnboarding = (
+  id: string,
+  subId: string,
+  projectId: string,
+  startedAt: string,
+): SiteOnboarding => ({
+  id,
+  subId,
+  projectId,
+  status: "Draft",
+  swms: [],
+  chemicals: [],
+  noChemicals: false,
+  plantLater: true,
+  startedAt,
+});
+
+/** True when the subcontractor may work on the project: approved, or allocated before onboarding existed. */
+export const siteOnboardingOk = (
+  list: SiteOnboarding[],
+  subId: string,
+  projectId: string,
+) => {
+  const r = list.find((x) => x.subId === subId && x.projectId === projectId);
+  return !r || r.status === "Approved";
+};
+
+/** Safety data sheets must be no more than five years old. */
+export const sdsOld = (date: string | null) =>
+  date !== null && daysUntil(date) < -1825;
+
+/** What the subcontractor still has to finish before it can submit. */
+export function siteOnboardingProblems(o: SiteOnboarding): string[] {
+  const out: string[] = [];
+  if (o.swms.length === 0) out.push("Add at least one SWMS");
+  else if (o.swms.some((x) => !x.title.trim()))
+    out.push("Say what work each SWMS covers");
+  if (!o.noChemicals && o.chemicals.length === 0)
+    out.push("List your hazardous chemicals, or say you will bring none");
+  if (
+    o.chemicals.some(
+      (c) =>
+        !c.name.trim() || !c.supplier.trim() || !c.location.trim() || !c.sdsDate,
+    )
+  )
+    out.push("Complete each chemical, including the SDS issue date");
+  return out;
+}
+
+/** What still stops the builder approving the onboarding. */
+export function siteOnboardingBlockers(o: SiteOnboarding): string[] {
+  const out: string[] = [];
+  if (o.swms.some((x) => !x.verified)) out.push("SWMS not all verified");
+  if (o.chemicals.some((c) => !c.verified)) out.push("SDS not all verified");
+  if (o.chemicals.some((c) => sdsOld(c.sdsDate)))
+    out.push("An SDS is more than five years old");
+  return out;
+}
 
 export type Drill = {
   id: string;
@@ -607,9 +807,12 @@ export const hasWhiteCard = (w: Pick<Worker, "tickets">) =>
 export function approvalBlockers(
   w: Pick<Worker, "tickets">,
   sub?: Pick<Subcontractor, "approved">,
+  /** false when the subcontractor's SWMS and SDS onboarding for this site is not approved */
+  siteOk = true,
 ): string[] {
   const out: string[] = [];
   if (sub && !sub.approved) out.push("Contractor not approved");
+  if (sub && !siteOk) out.push("Site onboarding not approved");
   if (!hasWhiteCard(w)) out.push("No white card on file");
   const lapsed = w.tickets.filter((t) => expiryOf(t.expires, 0) === "expired");
   if (lapsed.length) out.push(lapsed.length === 1 ? "Expired ticket" : "Expired tickets");
@@ -621,8 +824,9 @@ export function signOnBlockers(
   w: Pick<Worker, "tickets" | "inducted">,
   projectId: string,
   sub?: Pick<Subcontractor, "approved">,
+  siteOk = true,
 ): string[] {
-  const out = approvalBlockers(w, sub);
+  const out = approvalBlockers(w, sub, siteOk);
   if (!w.inducted.includes(projectId)) out.push("Needs a site induction first");
   return out;
 }
@@ -635,6 +839,9 @@ export const TICKET_KINDS = [
   "High risk work licence, crane",
   "High risk work licence, EWP",
   "High risk work licence, forklift",
+  "Verification of competency, earthmoving plant",
+  "Verification of competency, piling rig",
+  "Verification of competency, concrete placing boom",
   "Electrical licence",
   "Plumbing licence",
   "Working at heights",
@@ -1735,6 +1942,48 @@ export const seedPlant: Plant[] = [
     status: "In service",
     defect: "",
   },
+  {
+    id: "pl-boom",
+    projectId: "p-quarry",
+    name: "Boom lift BL-9",
+    kind: "Boom-type EWP",
+    typeKey: "boom-ewp",
+    serial: "GENIE-70412",
+    owner: "Apex Scaffolding",
+    ownerId: "s-apex",
+    flags: { roadRegistered: false, electrical: false, peopleLifting: false },
+    operatorMode: "labour-hire",
+    meter: { kind: "hours", reading: 1840, readAt: T },
+    serviceReading: { last: 1800, next: 2050 },
+    maintenance: {
+      last: addDays(-20),
+      next: addDays(70),
+      lastReading: 1820,
+      nextReading: 1950,
+    },
+    photo: [],
+    lastService: addDays(-30),
+    nextService: addDays(60),
+    tagDue: null,
+    lastPrestart: null,
+    status: "Off site",
+    defect: "",
+    onboarding: {
+      status: "Submitted",
+      ownerId: "s-apex",
+      submittedAt: `${T} 06:40`,
+      submittedBy: "Luca Romano",
+      operator: "Labour hire operators",
+      onSiteFrom: addDays(1),
+      docs: [
+        { id: "d1", key: "manual", kind: "Manufacturer's instructions", expires: null, verified: false },
+        { id: "d2", key: "logbook", kind: "Logbook evidence (recent entries)", expires: null, verified: false },
+        { id: "d3", key: "ra", kind: "Plant risk assessment", expires: null, verified: false },
+        { id: "d4", key: "designReg", kind: "Design registration", expires: null, verified: false },
+      ],
+      inspection: newPlantChecks("boom-ewp"),
+    },
+  },
 ];
 
 export const seedChemicals: Chemical[] = [
@@ -1844,6 +2093,42 @@ export const seedSiteRequests: SiteRequest[] = [
     subId: "s-ridge",
     requestedAt: `${T} 07:05`,
     status: "Pending",
+  },
+];
+
+/** Voltline Electrical has finished its onboarding for the harbour job and is waiting for approval. */
+export const seedSiteOnboardings: SiteOnboarding[] = [
+  {
+    id: "so-volt-harbour",
+    subId: "s-volt",
+    projectId: "p-harbour",
+    status: "Submitted",
+    swms: [
+      {
+        id: "w1",
+        title: "Electrical installation, testing and energising",
+        files: [],
+        verified: false,
+      },
+    ],
+    chemicals: [
+      {
+        id: "c1",
+        name: "PVC solvent cement",
+        supplier: "Reece",
+        hazard: "Flammable liquid",
+        quantity: "2 x 500 mL",
+        location: "Level 1 tool store",
+        sdsDate: addDays(-400),
+        files: [],
+        verified: false,
+      },
+    ],
+    noChemicals: false,
+    plantLater: true,
+    startedAt: `${T} 06:10`,
+    submittedAt: `${T} 06:55`,
+    submittedBy: "Priya Nair",
   },
 ];
 

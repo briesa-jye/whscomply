@@ -20,6 +20,7 @@ import {
   approvalBlockers,
   hasWhiteCard,
   signOnBlockers,
+  siteOnboardingOk,
   type Project,
   type Worker,
 } from "@/lib/data";
@@ -68,6 +69,10 @@ export function SiteAccess({
   const crew = s.workers.filter((w) => w.projects.includes(project.id));
   const subOf = (w: Worker) =>
     w.company === "own" ? undefined : s.subs.find((x) => x.id === w.company);
+  /** false while the contractor's SWMS and SDS onboarding for this site is waiting for approval */
+  const siteOk = (w: Worker) =>
+    w.company === "own" ||
+    siteOnboardingOk(s.siteOnboardings, w.company, project.id);
   const companyName = (w: Worker) =>
     w.company === "own" ? "Direct employee" : (subOf(w)?.name ?? "Contractor");
   const workerById = (id: string) => s.workers.find((w) => w.id === id);
@@ -114,7 +119,7 @@ export function SiteAccess({
   const requestRow = (id: string) => {
     const r = openRequests.find((x) => x.id === id)!;
     const w = workerById(r.workerId)!;
-    const why = approvalBlockers(w, subOf(w));
+    const why = approvalBlockers(w, subOf(w), siteOk(w));
     return (
       <li key={r.id} className="py-3">
         <div className="flex flex-wrap items-center gap-3">
@@ -189,7 +194,7 @@ export function SiteAccess({
   };
 
   const pendingRow = (w: Worker, i: number) => {
-    const why = approvalBlockers(w, subOf(w));
+    const why = approvalBlockers(w, subOf(w), siteOk(w));
     return (
       <li key={w.id} className="flex flex-wrap items-center gap-3 py-2">
         <Avatar initials={initials(w.name)} tone={(i % 3) as 0 | 1 | 2} />
@@ -217,7 +222,7 @@ export function SiteAccess({
 
   const gateRow = (w: Worker, i: number) => {
     const on = project.onSite.includes(w.id);
-    const why = signOnBlockers(w, project.id, subOf(w));
+    const why = signOnBlockers(w, project.id, subOf(w), siteOk(w));
     const last = lastEvent(w.id);
     return (
       <li
@@ -370,7 +375,7 @@ export function SiteAccess({
             </div>
             <p className="mt-4 text-xs text-ink-soft">
               Everyone needs a white card on file and current tickets. Contractor
-              workers also need an approved company.
+              workers also need an approved company and approved site onboarding (their SWMS and SDS).
             </p>
           </div>
 
@@ -470,7 +475,7 @@ export function SiteAccess({
       <Card>
         <CardHead
           title="Worker sign in and out"
-          sub="Only inducted workers with a white card and current tickets, from approved companies, can sign on."
+          sub="Only inducted workers with a white card and current tickets, from approved companies with approved site onboarding, can sign on."
           right={<Pill tone="neutral">{onSite.length} on site</Pill>}
         />
         {crew.length === 0 ? (
