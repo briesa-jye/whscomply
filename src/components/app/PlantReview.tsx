@@ -69,7 +69,8 @@ export function PlantReview({ id, base }: { id: string; base: string }) {
   const service = readingLeft(p, "service");
   const maint = readingLeft(p, "maintenance");
   const open = o.status === "Submitted";
-  const verified = o.docs.filter((d) => d.verified).length;
+  const nowDocs = o.docs.filter((d) => !d.later);
+  const verified = nowDocs.filter((d) => d.verified).length;
   const answered = o.inspection.filter((c) => c.result !== null).length;
 
   return (
@@ -172,8 +173,8 @@ export function PlantReview({ id, base }: { id: string; base: string }) {
             title="Documents"
             sub="Open each document, check it, then tick it as verified."
             right={
-              <Pill tone={verified === o.docs.length ? "ok" : "neutral"}>
-                {verified} of {o.docs.length} verified
+              <Pill tone={verified === nowDocs.length ? "ok" : "neutral"}>
+                {verified} of {nowDocs.length} verified
               </Pill>
             }
           />
@@ -211,6 +212,12 @@ export function PlantReview({ id, base }: { id: string; base: string }) {
                   </div>
                   {d.files?.length ? (
                     <AttachmentStrip files={d.files} />
+                  ) : d.later ? (
+                    <p className="text-xs text-ink-soft">
+                      Supplied after the plant is approved and installed. It is
+                      not needed for approval, but the plant cannot be used until
+                      it is in and verified.
+                    </p>
                   ) : (
                     <p className="text-xs font-semibold">
                       No file attached. It cannot be verified until the file is

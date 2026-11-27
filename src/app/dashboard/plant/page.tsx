@@ -16,7 +16,12 @@ import {
   Pill,
 } from "@/components/app/ui";
 import { addDays, daysUntil, plantApproval, type Plant } from "@/lib/data";
-import { plantTypeOf, readingLeft, readingTone } from "@/lib/plant-types";
+import {
+  plantCommissioned,
+  plantTypeOf,
+  readingLeft,
+  readingTone,
+} from "@/lib/plant-types";
 import { fmtDate, todayISO } from "@/lib/format";
 
 const FILTERS = ["All", "In service", "Out of service", "Due soon"] as const;
@@ -160,6 +165,9 @@ export default function PlantPage() {
               </Pill>
             )}
             {tg && <Pill tone={tg.tone}>Test and tag {tg.text}</Pill>}
+            {!plantCommissioned(p) && (
+              <Pill tone="owed">Awaiting commissioning paperwork</Pill>
+            )}
             {p.typeKey && !p.operators?.length ? (
               <Pill tone="owed">No operators assigned</Pill>
             ) : p.operators?.length ? (
@@ -171,7 +179,14 @@ export default function PlantPage() {
           <div className="mt-3 flex flex-wrap gap-2">
             {p.status === "In service" &&
               !prestartDone &&
-              (p.typeKey && !p.operators?.length ? (
+              (!plantCommissioned(p) ? (
+                <Link
+                  href={`/dashboard/plant/${p.id}`}
+                  className={`${btnDark} !px-3 !py-1.5 text-xs`}
+                >
+                  Commissioning paperwork
+                </Link>
+              ) : p.typeKey && !p.operators?.length ? (
                 <Link
                   href={`/dashboard/plant/${p.id}`}
                   className={`${btnDark} !px-3 !py-1.5 text-xs`}

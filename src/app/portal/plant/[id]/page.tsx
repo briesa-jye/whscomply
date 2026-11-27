@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { AttachmentStrip } from "@/components/app/Attachments";
+import { AttachField, AttachmentStrip } from "@/components/app/Attachments";
 import { PlantSubmitForm } from "@/components/app/PlantSubmitForm";
 import {
   btnLight,
@@ -154,6 +154,41 @@ export default function PortalPlantDetail() {
             )}
           </div>
         </Card>
+
+        {o.status === "Approved" && o.docs.some((d) => d.later) && (
+          <Card>
+            <CardHead
+              title="Commissioning paperwork"
+              sub="Upload this once the plant has been installed. The builder verifies it, and the plant cannot be used until then."
+            />
+            <ul className="divide-y divide-line">
+              {o.docs
+                .filter((d) => d.later)
+                .map((d) => (
+                  <li key={d.id} className="space-y-3 px-5 py-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="min-w-0 flex-1 text-sm font-semibold">
+                        {d.kind}
+                      </span>
+                      <Pill tone={d.verified ? "ok" : d.files?.length ? "neutral" : "owed"}>
+                        {d.verified
+                          ? "Verified"
+                          : d.files?.length
+                            ? "Waiting for the builder"
+                            : "To upload"}
+                      </Pill>
+                    </div>
+                    <AttachField
+                      files={d.files ?? []}
+                      disabled={d.verified}
+                      label="Attach commissioning paperwork"
+                      onChange={(files) => p.setPlantDocFiles(x.id, d.id, files)}
+                    />
+                  </li>
+                ))}
+            </ul>
+          </Card>
+        )}
 
         <Card>
           <CardHead title="Documents" />

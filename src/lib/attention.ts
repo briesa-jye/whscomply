@@ -1,5 +1,5 @@
 import { todayISO } from "./format";
-import { readingLeft, readingTone } from "./plant-types";
+import { plantLaterDocs, readingLeft, readingTone } from "./plant-types";
 import {
   daysUntil,
   expiryOf,
@@ -430,6 +430,20 @@ export function attentionFor(i: Input): Attention[] {
   // service by meter reading, and maintenance by date or reading
   for (const p of i.plant) {
     if (plantApproval(p) !== "Approved" || p.status === "Off site") continue;
+    // commissioning paperwork has been uploaded and is waiting to be checked
+    if (plantLaterDocs(p).some((d) => d.files?.length && !d.verified))
+      out.push({
+        id: `pl-${p.id}-comm`,
+        kind: "plant",
+        title: `Commissioning paperwork to verify: ${p.name}`,
+        where: i.projectName(p.projectId),
+        due: "Cannot be used until verified",
+        href: `/dashboard/plant/${p.id}`,
+        tone: "owed",
+        rank: -700,
+        who: ini(p.name),
+        projectId: p.projectId,
+      });
     for (const which of ["service", "maintenance"] as const) {
       const left = readingLeft(p, which);
       const days =

@@ -30,6 +30,8 @@ export type PlantDocSpec = {
   help?: string;
   /** only needed in some cases */
   when?: "over10t" | "peopleLifting";
+  /** uploaded after onboarding, before the plant is used (for example commissioning paperwork) */
+  later?: boolean;
 };
 
 export type PlantType = {
@@ -75,7 +77,8 @@ const D = {
   loadChart: { key: "loadChart", label: "Load chart", expiry: false },
   foundation: {
     key: "foundation",
-    label: "Foundation design statement (structural engineer)",
+    label: "Engineer's specifications and design for the base (foundation)",
+    help: "The structural engineer's design and specifications for the base the plant stands on.",
     expiry: false,
   },
   lineTest: {
@@ -90,6 +93,13 @@ const D = {
     expiry: true,
   },
   tag: { key: "tag", label: "Test and tag certificate", expiry: true },
+  commissioning: {
+    key: "commissioning",
+    label: "Commissioning paperwork",
+    expiry: false,
+    later: true,
+    help: "Uploaded after onboarding, once the crane has been installed. It cannot be used until this is in and verified.",
+  },
 } satisfies Record<string, PlantDocSpec>;
 
 /** Every piece of plant needs these. */
@@ -272,13 +282,14 @@ export const PLANT_TYPES: PlantType[] = [
       D.designReg,
       D.itemReg,
       D.foundation,
+      D.commissioning,
       D.craneSafe,
       D.major,
       D.liftReg,
       D.loadChart,
     ],
     checks: [
-      "Foundation matches the design statement",
+      "Foundation matches the engineer's design",
       "Limit switches and overload protection tested",
       "Anemometer and aviation lights fitted",
       "Wire rope, hooks and latches in good condition",
@@ -307,7 +318,7 @@ export const PLANT_TYPES: PlantType[] = [
     licence: COMP,
     docs: [D.designReg, D.itemReg, D.lineTest, D.foundation],
     checks: [
-      "Foundation matches the design statement",
+      "Foundation matches the engineer's design",
       "Boom and delivery line free of cracks and wear",
     ],
   },
@@ -409,10 +420,12 @@ export function plantBlockers(
     out.push("The contractor has no public liability insurance on file");
   if (ctx.pl === "expired")
     out.push("The contractor's public liability insurance has expired");
-  if (o.docs.some((d) => !d.files?.length))
+  // paperwork due after onboarding is not needed for approval
+  const docs = o.docs.filter((d) => !d.later);
+  if (docs.some((d) => !d.files?.length))
     out.push("A document has no file attached");
-  if (o.docs.some((d) => !d.verified)) out.push("Documents not all verified");
-  if (o.docs.some((d) => d.expires && daysUntil(d.expires) < 0))
+  if (docs.some((d) => !d.verified)) out.push("Documents not all verified");
+  if (docs.some((d) => d.expires && daysUntil(d.expires) < 0))
     out.push("A document has expired");
   if (o.inspection.some((c) => c.result === null))
     out.push("Arrival inspection not finished");
@@ -484,3 +497,11 @@ export const PRESTART_CHECKS = [
   "Tyres, tracks, outriggers or stabilisers are in good order",
   "No new damage or defects",
 ];
+
+/** Paperwork uploaded after onboarding, such as a crane's commissioning documents. */
+export const plantLaterDocs = (p: Pick<Plant, "onboarding">) =>
+  p.onboarding?.docs.filter((d) => d.later) ?? [];
+
+/** Until that paperwork is in and verified, the plant cannot be used. */
+export const plantCommissioned = (p: Pick<Plant, "onboarding">) =>
+  plantLaterDocs(p).every((d) => !!d.files?.length && d.verified);

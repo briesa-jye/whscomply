@@ -341,7 +341,7 @@ Subcontractors put their own plant forward from their portal under **My plant**.
 Pick the type of plant first and the form asks for what that type needs. Every field, document and file is required, and so is a photo of the whole machine.
 - **Every type:** the manufacturer's instructions, evidence of the logbook (recent entries), the plant risk assessment, service and maintenance dates, and the meter reading for plant with an hours or kilometre meter.
 - **Registration:** design registration and item registration are separate documents. Tower cranes, concrete booms and mobile cranes over 10 tonnes need both. Boom-type EWPs and hoists that lift people need design registration only. Road registration is asked for when the plant is road registered, and is always needed for mobile cranes and portable concrete booms.
-- **Cranes:** a CraneSafe inspection report, the 10 yearly major inspection report, the lifting equipment register and the load chart. Tower plant also needs a foundation design statement.
+- **Cranes:** a CraneSafe inspection report, the 10 yearly major inspection report, the lifting equipment register and the load chart. Tower plant also needs the engineer's specifications and design for its base. A tower crane's commissioning paperwork is not needed at onboarding because it is installed later: upload it afterwards from the plant's page (or the contractor's portal), verify it, and until then the crane cannot be pre-started.
 - **Concrete booms:** a line thickness test report.
 - **Insurance:** public liability insurance is not uploaded with the plant. It is checked against the contractor's own compliance documents, and plant cannot be approved if that is missing or expired.
 

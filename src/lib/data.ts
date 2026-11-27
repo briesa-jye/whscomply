@@ -522,6 +522,8 @@ export type PlantDoc = {
   verified: boolean;
   /** which requirement it answers, from the plant type table */
   key?: string;
+  /** uploaded after onboarding rather than with the submission */
+  later?: boolean;
 };
 
 export type PlantCheck = {

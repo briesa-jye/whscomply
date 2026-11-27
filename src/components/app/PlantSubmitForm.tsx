@@ -151,7 +151,7 @@ export function PlantSubmitForm({
   }
   need(!!svcLast && !!svcNext, "Service dates");
   need(!!mntLast && !!mntNext, "Maintenance dates");
-  for (const d of specs) {
+  for (const d of specs.filter((x) => !x.later)) {
     const v = docOf(d.key);
     need(v.files.length > 0, `${d.label}: attach the file`);
     if (d.expiry) need(!!v.expires, `${d.label}: date`);
@@ -192,8 +192,9 @@ export function PlantSubmitForm({
       docs: specs.map((d) => ({
         key: d.key,
         kind: d.label,
-        expires: d.expiry ? docOf(d.key).expires || null : null,
-        files: docOf(d.key).files,
+        expires: d.expiry && !d.later ? docOf(d.key).expires || null : null,
+        files: d.later ? [] : docOf(d.key).files,
+        later: d.later,
       })),
     };
     if (existing) {
@@ -488,7 +489,7 @@ export function PlantSubmitForm({
           checks the contractor&apos;s own compliance documents.
         </p>
         <ul className="divide-y divide-line">
-          {specs.map((d) => (
+          {specs.filter((d) => !d.later).map((d) => (
             <li key={d.key} className="space-y-3 px-5 py-4">
               <div>
                 <p className="text-sm font-semibold">{d.label}</p>
@@ -528,6 +529,16 @@ export function PlantSubmitForm({
             </li>
           ))}
         </ul>
+        {specs.some((d) => d.later) && (
+          <p className="border-t border-line bg-tint/50 px-5 py-3 text-xs text-ink-soft">
+            Not needed now, uploaded after onboarding:{" "}
+            {specs
+              .filter((d) => d.later)
+              .map((d) => d.label)
+              .join(", ")}
+            . The plant cannot be used until it is in and verified.
+          </p>
+        )}
       </Card>
 
       <div className="space-y-3">

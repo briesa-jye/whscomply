@@ -94,6 +94,7 @@ import {
 } from "@/lib/data";
 import {
   operatorCheck,
+  plantCommissioned,
   contractorPl,
   newPlantChecks,
   OPERATOR_LABEL,
@@ -481,6 +482,7 @@ export type NewPlantSubmission = {
     kind: string;
     expires: string | null;
     files: Attachment[];
+    later?: boolean;
   }[];
 };
 export type NewChemical = Omit<Chemical, "id" | "status">;
@@ -565,6 +567,8 @@ type Store = Saved & {
   logService: (id: string, nextService: string) => void;
   /** add or remove someone from the people who may operate a piece of plant */
   setPlantOperator: (id: string, workerId: string, on: boolean) => void;
+  /** attach files to a plant document, such as commissioning paperwork supplied after onboarding */
+  setPlantDocFiles: (id: string, docId: string, files: Attachment[]) => void;
   /** the daily pre-start: who operated it, the meter reading, and the checks */
   logPlantPrestart: (
     id: string,
@@ -1982,6 +1986,7 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
                 (d, n): PlantDoc => ({
                   id: `d${n + 1}`,
                   key: d.key,
+                  later: d.later,
                   kind: d.kind,
                   expires: d.expires,
                   files: d.files,
@@ -2040,6 +2045,7 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
               (d, n): PlantDoc => ({
                 id: `d${n + 1}`,
                 key: d.key,
+                later: d.later,
                 kind: d.kind,
                 expires: d.expires,
                 files: d.files,
@@ -2158,6 +2164,25 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
       ),
     );
   },
+  setPlantDocFiles: (id, docId, files) =>
+    update((s) => ({
+      ...s,
+      plant: patchIn(s.plant, id, (p) =>
+        p.onboarding
+          ? {
+              ...p,
+              onboarding: {
+                ...p.onboarding,
+                docs: p.onboarding.docs.map((d) =>
+                  d.id === docId
+                    ? { ...d, files, verified: files.length ? d.verified : false }
+                    : d,
+                ),
+              },
+            }
+          : p,
+      ),
+    })),
   setPlantOperator: (id, workerId, on) =>
     update((s) => ({
       ...s,
@@ -2177,6 +2202,7 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     const s0 = current();
     const x = s0.plant.find((p) => p.id === id);
     if (!x || plantApproval(x) !== "Approved" || x.status !== "In service") return;
+    if (!plantCommissioned(x)) return;
     const w = s0.workers.find((y) => y.id === i.operatorId);
     if (!w || !w.inducted.includes(x.projectId) || !operatorCheck(w, x).ok) return;
     if (x.typeKey && !(x.operators ?? []).includes(i.operatorId)) return;

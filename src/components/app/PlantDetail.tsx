@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { AttachmentStrip, Thumb } from "@/components/app/Attachments";
+import {
+  AttachField,
+  AttachmentStrip,
+  Thumb,
+} from "@/components/app/Attachments";
 import { useStore } from "@/components/app/DemoStore";
 import {
   btnDark,
@@ -19,6 +23,8 @@ import { plantApproval } from "@/lib/data";
 import { fmtDate, todayISO } from "@/lib/format";
 import {
   operatorCheck,
+  plantCommissioned,
+  plantLaterDocs,
   plantTypeOf,
   readingLeft,
   readingTone,
@@ -67,8 +73,13 @@ export function PlantDetail({ id }: { id: string }) {
   const todayDone = p.lastPrestart === todayISO();
   const svc = readingLeft(p, "service");
   const mnt = readingLeft(p, "maintenance");
+  const later = plantLaterDocs(p);
+  const commissioned = plantCommissioned(p);
   const canPrestart =
-    approved && p.status === "In service" && (!typed || operators.length > 0);
+    approved &&
+    commissioned &&
+    p.status === "In service" &&
+    (!typed || operators.length > 0);
 
   return (
     <>
@@ -110,6 +121,48 @@ export function PlantDetail({ id }: { id: string }) {
             </div>
           </div>
         </Card>
+
+        {later.length > 0 && (
+          <Card>
+            <CardHead
+              title="Commissioning paperwork"
+              sub="Uploaded after the plant is approved and installed. It cannot be used until this is in and verified."
+              right={
+                <Pill tone={commissioned ? "ok" : "owed"}>
+                  {commissioned ? "Verified" : "Outstanding"}
+                </Pill>
+              }
+            />
+            <ul className="divide-y divide-line">
+              {later.map((d) => (
+                <li key={d.id} className="space-y-3 px-5 py-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="min-w-0 flex-1 text-sm font-semibold">
+                      {d.kind}
+                    </span>
+                    <label className="flex items-center gap-1.5 text-xs font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={d.verified}
+                        disabled={!d.files?.length}
+                        onChange={(e) =>
+                          s.verifyPlantDoc(p.id, d.id, e.target.checked)
+                        }
+                        className="accent-[var(--ink)]"
+                      />
+                      Verified
+                    </label>
+                  </div>
+                  <AttachField
+                    files={d.files ?? []}
+                    label="Attach commissioning paperwork"
+                    onChange={(files) => s.setPlantDocFiles(p.id, d.id, files)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
 
         <Card>
           <CardHead
@@ -215,6 +268,8 @@ export function PlantDetail({ id }: { id: string }) {
                     ? "Done today"
                     : !approved
                       ? "Not approved"
+                      : !commissioned
+                        ? "Commissioning paperwork outstanding"
                       : p.status !== "In service"
                         ? p.status
                         : "Assign an operator first"}

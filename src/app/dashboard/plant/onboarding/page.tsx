@@ -64,7 +64,8 @@ export default function PlantOnboardingPage() {
           <ul>
             {list.map((p) => {
               const o = p.onboarding!;
-              const verified = o.docs.filter((d) => d.verified).length;
+              const nowDocs = o.docs.filter((d) => !d.later);
+              const verified = nowDocs.filter((d) => d.verified).length;
               return (
                 <li key={p.id} className="border-b border-line last:border-0">
                   <Link
@@ -88,7 +89,7 @@ export default function PlantOnboardingPage() {
                       <span className="block">by {o.submittedBy}</span>
                     </span>
                     <span className="text-xs text-ink-soft">
-                      {verified} of {o.docs.length} documents verified
+                      {verified} of {nowDocs.length} documents verified
                     </span>
                     <span className="flex items-center gap-2 justify-self-end">
                       <Pill

@@ -16,7 +16,12 @@ import {
 } from "@/components/app/ui";
 import { plantApproval } from "@/lib/data";
 import { todayISO } from "@/lib/format";
-import { operatorCheck, plantTypeOf, PRESTART_CHECKS } from "@/lib/plant-types";
+import {
+  operatorCheck,
+  plantCommissioned,
+  plantTypeOf,
+  PRESTART_CHECKS,
+} from "@/lib/plant-types";
 
 type Result = "pass" | "fail" | "na" | null;
 
@@ -48,7 +53,10 @@ export function PlantPrestart({ id }: { id: string }) {
   const typed = !!p.typeKey;
   const type = plantTypeOf(p);
   const unit = p.meter?.kind === "km" ? "km" : "hours";
-  const ok = plantApproval(p) === "Approved" && p.status === "In service";
+  const ok =
+    plantApproval(p) === "Approved" &&
+    p.status === "In service" &&
+    plantCommissioned(p);
   const done = p.lastPrestart === todayISO();
 
   // typed plant: only its assigned operators. Older records: anyone inducted to the site.
@@ -97,7 +105,7 @@ export function PlantPrestart({ id }: { id: string }) {
               done
                 ? "Come back tomorrow, or open the plant to see today's record."
                 : !ok
-                  ? "It has to be approved for the site and in service."
+                  ? "It has to be approved for the site, in service, and have its commissioning paperwork verified if it needs any."
                   : typed
                     ? "Assign operators who are inducted to this site and hold the right licence, then log the pre-start."
                     : "Nobody inducted to this site is available."
