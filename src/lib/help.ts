@@ -330,10 +330,15 @@ Photos added to diary entries, defects, incidents, inspection items and safety d
     title: "Plant and equipment",
     category: "Plant and materials",
     icon: "settings",
-    summary: "Pre-starts, services, test and tag, and defects.",
+    summary: "Onboard plant, then track pre-starts, services, test and tag, and defects.",
     open: { href: "/dashboard/plant", label: "Open plant" },
-    body: `## The register
-Add each item with its serial, owner, next service date and, for electrical items, the test and tag date.
+    body: `## Onboarding comes first
+Plant is not added straight to the register. Choose **Onboard plant** (or open **Plant onboarding**) and put it forward for a site, whether it is yours or a subcontractor's. You then verify each document, inspect the plant when it arrives, and choose **Approve for site**. You can decline it with a reason. Plant that is not approved cannot be used and does not appear in the register.
+
+Subcontractors put their own plant forward from their portal under **My plant**. They can only choose a site they have been allocated to, and they see why anything is declined, so they can correct it and send it again.
+
+## The register
+Approved plant appears with its owner. Contractor plant is labelled. Choose **Take off site** when it leaves, and **Return to site** to bring it back.
 
 ## Each day
 Choose **Log pre-start** once a day. Items without one show that no pre-start is done today.

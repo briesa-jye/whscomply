@@ -5,7 +5,6 @@ import {
   DRILL_KINDS,
   HAZARD_CLASSES,
   PERMIT_CHECKS,
-  PLANT_KINDS,
   type PermitKind,
 } from "@/lib/data";
 import { addDays, type Doc } from "@/lib/data";
@@ -149,72 +148,6 @@ export function PermitForm({ onClose }: { onClose: () => void }) {
         </Field>
         <div className="sm:col-span-2">
           <Actions onClose={onClose} submit="Request permit" />
-        </div>
-      </form>
-    </Shell>
-  );
-}
-
-export function PlantForm({ onClose }: { onClose: () => void }) {
-  const { addPlant } = useScope();
-  return (
-    <Shell
-      title="Add plant or equipment"
-      sub="Cranes, EWPs, excavators, tools and leads"
-      onClose={onClose}
-    >
-      <form
-        onSubmit={(e) => {
-          const g = fd(e);
-          addPlant({
-            projectId: g("projectId"),
-            name: g("name"),
-            kind: g("kind"),
-            serial: g("serial"),
-            owner: g("owner"),
-            nextService: g("nextService"),
-            tagDue: g("tagDue") || null,
-          });
-          onClose();
-        }}
-        className="grid gap-4 sm:grid-cols-2"
-      >
-        <Field label="Name" className="sm:col-span-2">
-          <input
-            name="name"
-            required
-            className={field}
-            placeholder="Scissor lift SL-4"
-          />
-        </Field>
-        <ProjectField />
-        <Field label="Type">
-          <select name="kind" className={field}>
-            {PLANT_KINDS.map((k) => (
-              <option key={k}>{k}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Serial or ID">
-          <input name="serial" required className={field} />
-        </Field>
-        <Field label="Owner">
-          <input name="owner" required defaultValue="Owned" className={field} />
-        </Field>
-        <Field label="Next service due">
-          <input
-            name="nextService"
-            type="date"
-            required
-            defaultValue={addDays(90)}
-            className={field}
-          />
-        </Field>
-        <Field label="Test and tag due" hint="electrical only">
-          <input name="tagDue" type="date" className={field} />
-        </Field>
-        <div className="sm:col-span-2">
-          <Actions onClose={onClose} submit="Add to register" />
         </div>
       </form>
     </Shell>

@@ -78,6 +78,11 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
     label: "Plant and equipment",
     items: [
       { href: "/dashboard/plant", label: "Plant register", icon: "settings" },
+      {
+        href: "/dashboard/plant/onboarding",
+        label: "Plant onboarding",
+        icon: "check",
+      },
     ],
   },
   {
@@ -118,7 +123,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === href : pathname.startsWith(href);
-  const current = ALL_ITEMS.find((n) => isActive(n.href));
+  // the most specific match, so Plant onboarding is not also read as Plant register
+  const current = ALL_ITEMS.filter((n) => isActive(n.href)).sort(
+    (a, b) => b.href.length - a.href.length,
+  )[0];
   const inSettings = pathname.startsWith("/dashboard/settings");
   const inHelp = pathname.startsWith("/dashboard/help");
 

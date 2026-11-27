@@ -5,6 +5,7 @@ import {
   meetingDue,
   meetingHref,
   meetingStatus,
+  plantApproval,
   type Action,
   type Chemical,
   type Defect,
@@ -288,6 +289,24 @@ export function attentionFor(i: Input): Attention[] {
   }
 
   for (const p of i.plant) {
+    const approval = plantApproval(p);
+    if (approval === "Submitted") {
+      out.push({
+        id: `pl-${p.id}-onb`,
+        kind: "plant",
+        title: `Plant waiting for approval: ${p.name}`,
+        where: `${p.owner} · ${i.projectName(p.projectId)}`,
+        due: "Waiting for review",
+        href: `/dashboard/plant/onboarding/${p.id}`,
+        tone: "owed",
+        // plant cannot start work until this is decided, so it leads the list
+        rank: -800,
+        who: ini(p.owner),
+        projectId: p.projectId,
+      });
+      continue;
+    }
+    if (approval !== "Approved") continue;
     if (p.status === "Out of service")
       out.push({
         id: `pl-${p.id}-oos`,

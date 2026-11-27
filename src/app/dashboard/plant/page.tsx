@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@/components/Icons";
 import { useScope } from "@/components/app/DemoStore";
-import { DateModal, PlantForm } from "@/components/app/forms2";
+import { DateModal } from "@/components/app/forms2";
 import {
   btnDark,
   btnLight,
@@ -13,7 +14,7 @@ import {
   PageHeading,
   Pill,
 } from "@/components/app/ui";
-import { addDays, daysUntil, type Plant } from "@/lib/data";
+import { addDays, daysUntil, plantApproval, type Plant } from "@/lib/data";
 import { fmtDate, todayISO } from "@/lib/format";
 
 const FILTERS = ["All", "In service", "Out of service", "Due soon"] as const;
@@ -31,11 +32,15 @@ const due = (iso: string | null) => {
 export default function PlantPage() {
   const s = useScope();
   const [f, setF] = useState<(typeof FILTERS)[number]>("All");
-  const [adding, setAdding] = useState(false);
   const [service, setService] = useState<Plant | null>(null);
   const [tag, setTag] = useState<Plant | null>(null);
 
-  const list = s.plantIn.filter(
+  // Plant only appears here once it has been approved for site.
+  const approved = s.plantIn.filter((p) => plantApproval(p) === "Approved");
+  const waiting = s.plantIn.filter(
+    (p) => p.onboarding?.status === "Submitted",
+  ).length;
+  const list = approved.filter(
     (p) =>
       f === "All" ||
       (f === "Due soon"
@@ -48,17 +53,25 @@ export default function PlantPage() {
     <>
       <PageHeading
         title="Plant and equipment"
-        sub="Cranes, lifts, excavators, tools and leads. Daily pre-starts, services, test and tag, and defects that take plant out of service."
+        sub="Approved plant on site, including plant brought by subcontractors. Daily pre-starts, services, test and tag, and defects that take plant out of service."
         actions={
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className={btnDark}
-          >
-            <Icon name="plus" className="h-4 w-4" /> Add plant
-          </button>
+          <Link href="/dashboard/plant/onboarding/new" className={btnDark}>
+            <Icon name="plus" className="h-4 w-4" /> Onboard plant
+          </Link>
         }
       />
+      {waiting > 0 && (
+        <Link
+          href="/dashboard/plant/onboarding"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-accent/15 px-4 py-3 text-sm font-medium"
+        >
+          <span>
+            {waiting} item{waiting === 1 ? "" : "s"} of plant waiting for
+            approval before {waiting === 1 ? "it" : "they"} can be used.
+          </span>
+          <span className="font-semibold underline">Review</span>
+        </Link>
+      )}
       <Card>
         <div className="flex items-center justify-between border-b border-line px-5 py-3">
           <Chips value={f} options={[...FILTERS]} onChange={setF} />
@@ -113,11 +126,14 @@ export default function PlantPage() {
                         ? "Pre-start done today"
                         : "Pre-start not done today"}
                     </Pill>
+                    {p.ownerId && p.ownerId !== "own" && (
+                      <Pill tone="neutral">Contractor plant</Pill>
+                    )}
                     {svc && <Pill tone={svc.tone}>Service {svc.text}</Pill>}
                     {tg && <Pill tone={tg.tone}>Test and tag {tg.text}</Pill>}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {!out && !prestartDone && (
+                    {p.status === "In service" && !prestartDone && (
                       <button
                         type="button"
                         onClick={() => s.logPrestart(p.id)}
@@ -143,7 +159,15 @@ export default function PlantPage() {
                         Record test and tag
                       </button>
                     )}
-                    {out ? (
+                    {p.status === "Off site" ? (
+                      <button
+                        type="button"
+                        onClick={() => s.setPlantStatus(p.id, "In service")}
+                        className={`${btnLight} !px-3 !py-1.5 text-xs`}
+                      >
+                        Return to site
+                      </button>
+                    ) : out ? (
                       <button
                         type="button"
                         onClick={() => s.setPlantStatus(p.id, "In service")}
@@ -164,6 +188,22 @@ export default function PlantPage() {
                         Report defect
                       </button>
                     )}
+                    {p.status === "In service" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Take ${p.name} off site? It leaves the active register until you return it.`,
+                            )
+                          )
+                            s.setPlantStatus(p.id, "Off site");
+                        }}
+                        className={`${btnLight} !px-3 !py-1.5 text-xs`}
+                      >
+                        Take off site
+                      </button>
+                    )}
                   </div>
                 </li>
               );
@@ -172,7 +212,6 @@ export default function PlantPage() {
         )}
       </Card>
 
-      {adding && <PlantForm onClose={() => setAdding(false)} />}
       {service && (
         <DateModal
           title={`Record a service: ${service.name}`}

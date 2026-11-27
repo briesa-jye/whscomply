@@ -66,6 +66,14 @@ export function PortalShell({ children }: { children: ReactNode }) {
       badge: p.ticketsDue.length + p.uninducted.length,
     },
     {
+      href: "/portal/plant",
+      label: "My plant",
+      icon: "settings",
+      badge: p.plant.filter(
+        (x) => x.ownerId === p.subId && x.onboarding?.status === "Declined",
+      ).length,
+    },
+    {
       href: "/portal/actions",
       label: "Actions",
       icon: "check",

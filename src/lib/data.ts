@@ -473,7 +473,111 @@ export type Plant = {
   lastPrestart: string | null;
   status: "In service" | "Out of service" | "Off site";
   defect: string;
+  /** "own" for the builder's plant, or the subcontractor id that brought it to site. Missing means the builder's. */
+  ownerId?: string;
+  /** how it was approved to work on site. Missing on older records, which count as approved. */
+  onboarding?: PlantOnboarding;
 };
+
+/** A document supplied for plant going onto a site, checked by the builder. */
+export type PlantDoc = {
+  id: string;
+  kind: string;
+  expires: string | null;
+  files?: Attachment[];
+  verified: boolean;
+};
+
+export type PlantCheck = {
+  id: string;
+  text: string;
+  result: "pass" | "fail" | "na" | null;
+  note: string;
+};
+
+/**
+ * The hold point for plant: it cannot be used on site until the PCBU has checked the
+ * documents, inspected it on arrival and approved it.
+ */
+export type PlantOnboarding = {
+  status: "Submitted" | "Approved" | "Declined" | "Withdrawn";
+  /** "own" or the subcontractor id */
+  ownerId: string;
+  /** "yyyy-mm-dd hh:mm" */
+  submittedAt: string;
+  submittedBy: string;
+  /** operator name and licence number */
+  operator: string;
+  /** planned arrival on site, "yyyy-mm-dd" */
+  onSiteFrom: string;
+  docs: PlantDoc[];
+  /** the arrival inspection */
+  inspection: PlantCheck[];
+  inspectedBy?: string;
+  inspectedAt?: string;
+  /** conditions attached to an approval */
+  conditions?: string;
+  decidedAt?: string;
+  decidedBy?: string;
+  /** why it was declined */
+  note?: string;
+};
+
+export const plantApproval = (p: Pick<Plant, "onboarding">) =>
+  p.onboarding?.status ?? "Approved";
+
+const PLANT_REGISTERED_KINDS = ["Crane", "EWP", "Excavator", "Forklift", "Pump"];
+
+/** The documents a piece of plant needs before it comes onto site. */
+export function plantDocKinds(
+  kind: string,
+  electrical: boolean,
+): { kind: string; expires: boolean }[] {
+  const out = [
+    { kind: "Public liability insurance", expires: true },
+    { kind: "Maintenance and service record", expires: false },
+    { kind: "Risk assessment or SWMS for this plant", expires: false },
+  ];
+  if (PLANT_REGISTERED_KINDS.includes(kind)) {
+    out.unshift({ kind: "Registration or design registration", expires: true });
+    out.push({ kind: "Operator licence or competency", expires: true });
+  }
+  if (electrical) out.push({ kind: "Test and tag certificate", expires: true });
+  return out;
+}
+
+/** The checks made when plant arrives on site. */
+export const PLANT_INSPECTION = [
+  "Serial number or plant ID matches the documents",
+  "Guards, covers and safety devices fitted and working",
+  "Emergency stops, horn and reverse alarm work",
+  "Lights, beacons and mirrors in good order",
+  "No fluid leaks, cracks or damage",
+  "Fire extinguisher fitted and in date, where required",
+  "Tags and plates visible and current",
+  "Operator present with the right licence",
+];
+
+export const newPlantChecks = (): PlantCheck[] =>
+  PLANT_INSPECTION.map((text, i) => ({
+    id: `c${i + 1}`,
+    text,
+    result: null,
+    note: "",
+  }));
+
+/** What still stops plant being approved. Empty means it can be approved. */
+export function plantBlockers(o: PlantOnboarding): string[] {
+  const out: string[] = [];
+  if (o.docs.some((d) => !d.verified)) out.push("Documents not all verified");
+  if (o.docs.some((d) => d.expires && expiryOf(d.expires, 0) === "expired"))
+    out.push("A document has expired");
+  if (o.inspection.some((c) => c.result === null))
+    out.push("Arrival inspection not finished");
+  if (o.inspection.some((c) => c.result === "fail"))
+    out.push("Arrival inspection has a failed item");
+  return out;
+}
 
 export type Chemical = {
   id: string;
@@ -1734,6 +1838,37 @@ export const seedPlant: Plant[] = [
     lastPrestart: null,
     status: "In service",
     defect: "",
+  },
+  {
+    id: "pl-boom",
+    projectId: "p-quarry",
+    name: "Boom lift BL-9",
+    kind: "EWP",
+    serial: "GENIE-70412",
+    owner: "Apex Scaffolding",
+    ownerId: "s-apex",
+    lastService: addDays(-30),
+    nextService: addDays(60),
+    tagDue: null,
+    lastPrestart: null,
+    status: "Off site",
+    defect: "",
+    onboarding: {
+      status: "Submitted",
+      ownerId: "s-apex",
+      submittedAt: `${T} 06:40`,
+      submittedBy: "Luca Romano",
+      operator: "Dan Lopez, HRW licence WP-44218",
+      onSiteFrom: addDays(1),
+      docs: [
+        { id: "d1", kind: "Registration or design registration", expires: addDays(240), verified: false },
+        { id: "d2", kind: "Public liability insurance", expires: addDays(34), verified: false },
+        { id: "d3", kind: "Maintenance and service record", expires: null, verified: false },
+        { id: "d4", kind: "Risk assessment or SWMS for this plant", expires: null, verified: false },
+        { id: "d5", kind: "Operator licence or competency", expires: addDays(300), verified: false },
+      ],
+      inspection: newPlantChecks(),
+    },
   },
 ];
 
