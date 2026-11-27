@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   DRILL_KINDS,
-  HAZARD_CLASSES,
   PERMIT_CHECKS,
   type PermitKind,
 } from "@/lib/data";
@@ -148,79 +147,6 @@ export function PermitForm({ onClose }: { onClose: () => void }) {
         </Field>
         <div className="sm:col-span-2">
           <Actions onClose={onClose} submit="Request permit" />
-        </div>
-      </form>
-    </Shell>
-  );
-}
-
-export function ChemicalForm({ onClose }: { onClose: () => void }) {
-  const { addChemical } = useScope();
-  return (
-    <Shell
-      title="Add a hazardous chemical"
-      sub="Every chemical on site needs a current safety data sheet"
-      onClose={onClose}
-      wide
-    >
-      <form
-        onSubmit={(e) => {
-          const g = fd(e);
-          const hasSds = g("hasSds") === "yes";
-          addChemical({
-            projectId: g("projectId"),
-            name: g("name"),
-            supplier: g("supplier"),
-            hazard: g("hazard"),
-            quantity: g("quantity"),
-            location: g("location"),
-            hasSds,
-            sdsDate: hasSds ? g("sdsDate") || todayISO() : null,
-            controls: g("controls"),
-          });
-          onClose();
-        }}
-        className="grid gap-4 sm:grid-cols-2"
-      >
-        <Field label="Product name" className="sm:col-span-2">
-          <input name="name" required className={field} />
-        </Field>
-        <ProjectField />
-        <Field label="Supplier">
-          <input name="supplier" required className={field} />
-        </Field>
-        <Field label="Hazard class">
-          <select name="hazard" className={field}>
-            {HAZARD_CLASSES.map((k) => (
-              <option key={k}>{k}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Quantity on site">
-          <input
-            name="quantity"
-            required
-            className={field}
-            placeholder="4 x 20 L"
-          />
-        </Field>
-        <Field label="Stored at" className="sm:col-span-2">
-          <input name="location" required className={field} />
-        </Field>
-        <Field label="Safety data sheet on file?">
-          <select name="hasSds" defaultValue="yes" className={field}>
-            <option value="yes">Yes</option>
-            <option value="no">Not yet</option>
-          </select>
-        </Field>
-        <Field label="SDS issue date" hint="if on file">
-          <input name="sdsDate" type="date" className={field} />
-        </Field>
-        <Field label="Controls" className="sm:col-span-2">
-          <textarea name="controls" required rows={3} className={field} />
-        </Field>
-        <div className="sm:col-span-2">
-          <Actions onClose={onClose} submit="Add chemical" />
         </div>
       </form>
     </Shell>

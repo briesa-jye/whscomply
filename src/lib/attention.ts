@@ -12,6 +12,7 @@ import {
   type Inspection,
   type InspectionSchedule,
   type Rfi,
+  type SiteOnboarding,
   type SiteRequest,
   type Doc,
   type Drill,
@@ -86,6 +87,7 @@ type Input = {
   schedules: InspectionSchedule[];
   inspections: Inspection[];
   requests: SiteRequest[];
+  onboardings: SiteOnboarding[];
   warnDays: number;
   notify: {
     tickets: boolean;
@@ -95,6 +97,7 @@ type Input = {
   };
   projectName: (id: string) => string;
   workerName: (id: string) => string;
+  subName: (id: string) => string;
 };
 
 const ini = (n: string) =>
@@ -420,6 +423,23 @@ export function attentionFor(i: Input): Attention[] {
       rank: n,
       who: ini(d.owner),
       projectId: d.projectId,
+    });
+  }
+
+  for (const o of i.onboardings) {
+    if (o.status !== "Submitted") continue;
+    out.push({
+      id: `so-${o.id}`,
+      kind: "chemical",
+      title: `Site onboarding to review: ${i.subName(o.subId)}`,
+      where: i.projectName(o.projectId),
+      due: "SWMS and SDS waiting for approval",
+      href: `/dashboard/chemicals/onboarding/${o.id}`,
+      tone: "owed",
+      // its workers cannot start until this is decided, so it leads the list
+      rank: -800,
+      who: ini(i.subName(o.subId)),
+      projectId: o.projectId,
     });
   }
 

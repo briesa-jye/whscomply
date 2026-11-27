@@ -33,6 +33,10 @@ import {
   seedVisitors,
   seedGateLog,
   seedMeetingTemplates,
+  seedSiteOnboardings,
+  newSiteOnboarding,
+  siteOnboardingBlockers,
+  siteOnboardingProblems,
   newPlantChecks,
   plantApproval,
   plantBlockers,
@@ -67,6 +71,7 @@ import {
   type Visitor,
   type GateEvent,
   type MeetingTemplate,
+  type SiteOnboarding,
   type PlantCheck,
   type PlantDoc,
   type SiteRequest,
@@ -146,6 +151,8 @@ type Saved = {
   siteRequests: SiteRequest[];
   /** what each kind of meeting records, edited by the client */
   meetingTemplates: MeetingTemplate[];
+  /** each subcontractor's SWMS and SDS onboarding for each project it works on */
+  siteOnboardings: SiteOnboarding[];
   iso: IsoState;
 };
 
@@ -182,6 +189,7 @@ const SEED: Saved = {
   gateLog: seedGateLog,
   siteRequests: seedSiteRequests,
   meetingTemplates: seedMeetingTemplates,
+  siteOnboardings: seedSiteOnboardings,
   iso: {
     profile: {
       company: seedSettings.company.name,
@@ -257,6 +265,7 @@ function migrate(p: Saved): Saved {
     gateLog: p.gateLog ?? [],
     siteRequests: p.siteRequests ?? [],
     meetingTemplates: p.meetingTemplates ?? seedMeetingTemplates,
+    siteOnboardings: p.siteOnboardings ?? seedSiteOnboardings,
   };
 }
 
@@ -539,6 +548,26 @@ type Store = Saved & {
   tagPlant: (id: string, nextDue: string) => void;
 
   addChemical: (i: NewChemical) => void;
+  /** open, or find, a subcontractor's onboarding for a project */
+  startSiteOnboarding: (subId: string, projectId: string) => string;
+  saveSiteOnboarding: (
+    id: string,
+    patch: Partial<
+      Pick<SiteOnboarding, "swms" | "chemicals" | "noChemicals" | "plantLater">
+    >,
+  ) => void;
+  submitSiteOnboarding: (id: string) => void;
+  verifySiteItem: (
+    id: string,
+    list: "swms" | "chemicals",
+    itemId: string,
+    verified: boolean,
+  ) => void;
+  decideSiteOnboarding: (
+    id: string,
+    decision: "Approved" | "Declined",
+    note?: string,
+  ) => void;
   updateChemical: (id: string, patch: Partial<Chemical>) => void;
 
   addDrill: (i: NewDrill) => void;
@@ -2115,6 +2144,131 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
     );
   },
 
+  startSiteOnboarding: (subId, projectId) => {
+    const existing = current().siteOnboardings.find(
+      (o) => o.subId === subId && o.projectId === projectId,
+    );
+    if (existing) return existing.id;
+    const id = `so-${uid()}`;
+    update((s) => ({
+      ...s,
+      siteOnboardings: [
+        newSiteOnboarding(id, subId, projectId, stamp()),
+        ...s.siteOnboardings,
+      ],
+    }));
+    return id;
+  },
+  saveSiteOnboarding: (id, patch) =>
+    update((s) => ({
+      ...s,
+      siteOnboardings: s.siteOnboardings.map((o) =>
+        o.id === id && (o.status === "Draft" || o.status === "Declined")
+          ? { ...o, ...patch }
+          : o,
+      ),
+    })),
+  submitSiteOnboarding: (id) => {
+    const s0 = current();
+    const o = s0.siteOnboardings.find((x) => x.id === id);
+    if (!o || (o.status !== "Draft" && o.status !== "Declined")) return;
+    if (siteOnboardingProblems(o).length) return;
+    const sub = s0.subs.find((x) => x.id === o.subId);
+    act(
+      (s) => ({
+        ...s,
+        siteOnboardings: s.siteOnboardings.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                status: "Submitted" as const,
+                submittedAt: stamp(),
+                submittedBy: sub?.contact || sub?.name || "Subcontractor",
+                decidedAt: undefined,
+                decidedBy: undefined,
+                note: undefined,
+                // a fresh review each time it is sent
+                swms: x.swms.map((i) => ({ ...i, verified: false })),
+                chemicals: x.chemicals.map((i) => ({ ...i, verified: false })),
+              }
+            : x,
+        ),
+      }),
+      ev(
+        "Chemicals",
+        o.projectId,
+        `submitted its SWMS and SDS for ${projectName(s0, o.projectId)}`,
+        o.status,
+        "Submitted",
+      ),
+    );
+  },
+  verifySiteItem: (id, list, itemId, verified) =>
+    update((s) => ({
+      ...s,
+      siteOnboardings: s.siteOnboardings.map((o) =>
+        o.id === id && o.status === "Submitted"
+          ? {
+              ...o,
+              [list]: (o[list] as { id: string; verified: boolean }[]).map(
+                (i) => (i.id === itemId ? { ...i, verified } : i),
+              ),
+            }
+          : o,
+      ),
+    })),
+  decideSiteOnboarding: (id, decision, note) => {
+    const s0 = current();
+    const o = s0.siteOnboardings.find((x) => x.id === id);
+    if (!o || o.status !== "Submitted") return;
+    if (decision === "Approved" && siteOnboardingBlockers(o).length) return;
+    const sub = s0.subs.find((x) => x.id === o.subId);
+    act(
+      (s) => ({
+        ...s,
+        siteOnboardings: s.siteOnboardings.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                status: decision,
+                decidedAt: stamp(),
+                decidedBy: me.name,
+                note: decision === "Declined" ? note?.trim() || undefined : undefined,
+              }
+            : x,
+        ),
+        // approved chemicals go onto the builder's register for this project
+        chemicals:
+          decision === "Approved"
+            ? [
+                ...o.chemicals.map((c) => ({
+                  id: `ch-${uid()}`,
+                  projectId: o.projectId,
+                  name: c.name,
+                  supplier: c.supplier,
+                  hazard: c.hazard,
+                  quantity: c.quantity,
+                  location: c.location,
+                  hasSds: true,
+                  sdsDate: c.sdsDate,
+                  controls: `Brought by ${sub?.name ?? "a subcontractor"}. Follow the safety data sheet and the subcontractor's SWMS.`,
+                  status: "In use" as const,
+                  files: c.files,
+                  ownerId: o.subId,
+                })),
+                ...s.chemicals,
+              ]
+            : s.chemicals,
+      }),
+      ev(
+        "Chemicals",
+        o.projectId,
+        `${decision === "Approved" ? "approved" : "declined"} ${sub?.name ?? "the subcontractor"}'s site onboarding for ${projectName(s0, o.projectId)}`,
+        "Submitted",
+        decision,
+      ),
+    );
+  },
   addChemical: (i) =>
     act(
       (s) => ({
@@ -2536,6 +2690,22 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
                 : { ...x, projects: [...x.projects, inv.projectId] },
             )
           : s.subs,
+        // being allocated to a project starts its SWMS and SDS onboarding
+        siteOnboardings:
+          accept &&
+          !s.siteOnboardings.some(
+            (o) => o.subId === inv.subId && o.projectId === inv.projectId,
+          )
+            ? [
+                newSiteOnboarding(
+                  `so-${uid()}`,
+                  inv.subId,
+                  inv.projectId,
+                  stamp(),
+                ),
+                ...s.siteOnboardings,
+              ]
+            : s.siteOnboardings,
       }),
       ev(
         "People",

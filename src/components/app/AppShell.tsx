@@ -93,6 +93,11 @@ const GROUPS: { label?: string; items: NavItem[] }[] = [
         label: "Chemical register",
         icon: "flag",
       },
+      {
+        href: "/dashboard/chemicals/onboarding",
+        label: "Chemical onboarding",
+        icon: "check",
+      },
     ],
   },
   {

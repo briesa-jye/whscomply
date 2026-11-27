@@ -12,6 +12,7 @@ import {
   rating,
   RISK_CATEGORIES,
   signOnBlockers,
+  siteOnboardingOk,
   WEATHER,
   type IncidentType,
   type MeetingKind,
@@ -1170,7 +1171,13 @@ export async function executeTool(
           w.company === "own"
             ? undefined
             : store.subs.find((x) => x.id === w.company);
-        const blockers = signOnBlockers(w, projectId, sub);
+        const blockers = signOnBlockers(
+          w,
+          projectId,
+          sub,
+          w.company === "own" ||
+            siteOnboardingOk(store.siteOnboardings, w.company, projectId),
+        );
         if (blockers.length)
           return fail(
             `${w.name} cannot be signed on at ${pname(projectId)}: ${blockers.join("; ").toLowerCase()}. Approvals and inductions are completed by a person on the project's Site access tab at /dashboard/projects/${projectId}.`,

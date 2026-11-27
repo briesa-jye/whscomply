@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@/components/Icons";
 import { useScope } from "@/components/app/DemoStore";
-import { ChemicalForm, DateModal } from "@/components/app/forms2";
+import { DateModal } from "@/components/app/forms2";
 import { AttachField } from "@/components/app/Attachments";
 import {
   btnDark,
@@ -27,9 +28,11 @@ export default function ChemicalsPage() {
   const s = useScope();
   const [f, setF] = useState<(typeof FILTERS)[number]>("In use");
   const [q, setQ] = useState("");
-  const [adding, setAdding] = useState(false);
   const [sdsFor, setSdsFor] = useState<Chemical | null>(null);
 
+  const waiting = s.siteOnboardings.filter(
+    (o) => o.status === "Submitted" && (s.all || o.projectId === s.scopeId),
+  ).length;
   const list = s.chemicalsIn.filter(
     (c) =>
       `${c.name} ${c.supplier} ${c.hazard}`
@@ -45,15 +48,23 @@ export default function ChemicalsPage() {
         title="Hazardous chemicals"
         sub="Every hazardous chemical on site, where it is kept and its safety data sheet. SDSs must be current, and no more than five years old."
         actions={
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className={btnDark}
-          >
+          <Link href="/dashboard/chemicals/new" className={btnDark}>
             <Icon name="plus" className="h-4 w-4" /> Add chemical
-          </button>
+          </Link>
         }
       />
+      {waiting > 0 && (
+        <Link
+          href="/dashboard/chemicals/onboarding"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-accent/15 px-4 py-3 text-sm font-medium"
+        >
+          <span>
+            {waiting} subcontractor onboarding{waiting === 1 ? "" : "s"} with SWMS
+            and SDS waiting for approval.
+          </span>
+          <span className="font-semibold underline">Review</span>
+        </Link>
+      )}
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-line p-3">
           <label className="flex min-w-[12rem] flex-1 items-center gap-2 rounded-full bg-bg px-3 py-2 text-sm text-ink-soft focus-within:ring-2 focus-within:ring-accent">
@@ -94,6 +105,12 @@ export default function ChemicalsPage() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Pill tone="neutral">{c.hazard}</Pill>
+                      {c.ownerId && (
+                        <Pill tone="neutral">
+                          {s.subs.find((x) => x.id === c.ownerId)?.name ??
+                            "Contractor"}
+                        </Pill>
+                      )}
                       <Pill tone={!c.hasSds || old ? "owed" : "ok"}>
                         {!c.hasSds
                           ? "SDS missing"
@@ -144,7 +161,6 @@ export default function ChemicalsPage() {
           </ul>
         )}
       </Card>
-      {adding && <ChemicalForm onClose={() => setAdding(false)} />}
       {sdsFor && (
         <DateModal
           title={`Safety data sheet: ${sdsFor.name}`}

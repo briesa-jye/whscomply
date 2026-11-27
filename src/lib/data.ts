@@ -594,7 +594,118 @@ export type Chemical = {
   status: "In use" | "Removed";
   /** the safety data sheet itself */
   files?: Attachment[];
+  /** the subcontractor that brought it to site. Missing means the builder's. */
+  ownerId?: string;
 };
+
+/** A subcontractor's SWMS for its work on one project. */
+export type OnboardingSwms = {
+  id: string;
+  /** the work it covers */
+  title: string;
+  files: Attachment[];
+  verified: boolean;
+};
+
+/** A hazardous chemical a subcontractor will bring to one project, with its safety data sheet. */
+export type OnboardingSds = {
+  id: string;
+  name: string;
+  supplier: string;
+  hazard: string;
+  quantity: string;
+  location: string;
+  /** SDS issue date, "yyyy-mm-dd" */
+  sdsDate: string | null;
+  files: Attachment[];
+  verified: boolean;
+};
+
+/**
+ * What a subcontractor supplies before it starts work on a project: its SWMS and a safety data
+ * sheet for every hazardous chemical it will bring. Created when it is allocated to the project.
+ * Until the builder approves it, the subcontractor's workers cannot be approved or signed on.
+ * Plant can be skipped here and put forward separately once it is ready to come to site.
+ */
+export type SiteOnboarding = {
+  id: string;
+  subId: string;
+  projectId: string;
+  status: "Draft" | "Submitted" | "Approved" | "Declined";
+  swms: OnboardingSwms[];
+  chemicals: OnboardingSds[];
+  /** the subcontractor says it will bring no hazardous chemicals */
+  noChemicals: boolean;
+  /** plant is skipped for now and submitted later */
+  plantLater: boolean;
+  /** "yyyy-mm-dd hh:mm" */
+  startedAt: string;
+  submittedAt?: string;
+  submittedBy?: string;
+  decidedAt?: string;
+  decidedBy?: string;
+  /** why it was declined */
+  note?: string;
+};
+
+export const newSiteOnboarding = (
+  id: string,
+  subId: string,
+  projectId: string,
+  startedAt: string,
+): SiteOnboarding => ({
+  id,
+  subId,
+  projectId,
+  status: "Draft",
+  swms: [],
+  chemicals: [],
+  noChemicals: false,
+  plantLater: true,
+  startedAt,
+});
+
+/** True when the subcontractor may work on the project: approved, or allocated before onboarding existed. */
+export const siteOnboardingOk = (
+  list: SiteOnboarding[],
+  subId: string,
+  projectId: string,
+) => {
+  const r = list.find((x) => x.subId === subId && x.projectId === projectId);
+  return !r || r.status === "Approved";
+};
+
+/** Safety data sheets must be no more than five years old. */
+export const sdsOld = (date: string | null) =>
+  date !== null && daysUntil(date) < -1825;
+
+/** What the subcontractor still has to finish before it can submit. */
+export function siteOnboardingProblems(o: SiteOnboarding): string[] {
+  const out: string[] = [];
+  if (o.swms.length === 0) out.push("Add at least one SWMS");
+  else if (o.swms.some((x) => !x.title.trim()))
+    out.push("Say what work each SWMS covers");
+  if (!o.noChemicals && o.chemicals.length === 0)
+    out.push("List your hazardous chemicals, or say you will bring none");
+  if (
+    o.chemicals.some(
+      (c) =>
+        !c.name.trim() || !c.supplier.trim() || !c.location.trim() || !c.sdsDate,
+    )
+  )
+    out.push("Complete each chemical, including the SDS issue date");
+  return out;
+}
+
+/** What still stops the builder approving the onboarding. */
+export function siteOnboardingBlockers(o: SiteOnboarding): string[] {
+  const out: string[] = [];
+  if (o.swms.some((x) => !x.verified)) out.push("SWMS not all verified");
+  if (o.chemicals.some((c) => !c.verified)) out.push("SDS not all verified");
+  if (o.chemicals.some((c) => sdsOld(c.sdsDate)))
+    out.push("An SDS is more than five years old");
+  return out;
+}
 
 export type Drill = {
   id: string;
@@ -711,9 +822,12 @@ export const hasWhiteCard = (w: Pick<Worker, "tickets">) =>
 export function approvalBlockers(
   w: Pick<Worker, "tickets">,
   sub?: Pick<Subcontractor, "approved">,
+  /** false when the subcontractor's SWMS and SDS onboarding for this site is not approved */
+  siteOk = true,
 ): string[] {
   const out: string[] = [];
   if (sub && !sub.approved) out.push("Contractor not approved");
+  if (sub && !siteOk) out.push("Site onboarding not approved");
   if (!hasWhiteCard(w)) out.push("No white card on file");
   const lapsed = w.tickets.filter((t) => expiryOf(t.expires, 0) === "expired");
   if (lapsed.length) out.push(lapsed.length === 1 ? "Expired ticket" : "Expired tickets");
@@ -725,8 +839,9 @@ export function signOnBlockers(
   w: Pick<Worker, "tickets" | "inducted">,
   projectId: string,
   sub?: Pick<Subcontractor, "approved">,
+  siteOk = true,
 ): string[] {
-  const out = approvalBlockers(w, sub);
+  const out = approvalBlockers(w, sub, siteOk);
   if (!w.inducted.includes(projectId)) out.push("Needs a site induction first");
   return out;
 }
@@ -1979,6 +2094,42 @@ export const seedSiteRequests: SiteRequest[] = [
     subId: "s-ridge",
     requestedAt: `${T} 07:05`,
     status: "Pending",
+  },
+];
+
+/** Voltline Electrical has finished its onboarding for the harbour job and is waiting for approval. */
+export const seedSiteOnboardings: SiteOnboarding[] = [
+  {
+    id: "so-volt-harbour",
+    subId: "s-volt",
+    projectId: "p-harbour",
+    status: "Submitted",
+    swms: [
+      {
+        id: "w1",
+        title: "Electrical installation, testing and energising",
+        files: [],
+        verified: false,
+      },
+    ],
+    chemicals: [
+      {
+        id: "c1",
+        name: "PVC solvent cement",
+        supplier: "Reece",
+        hazard: "Flammable liquid",
+        quantity: "2 x 500 mL",
+        location: "Level 1 tool store",
+        sdsDate: addDays(-400),
+        files: [],
+        verified: false,
+      },
+    ],
+    noChemicals: false,
+    plantLater: true,
+    startedAt: `${T} 06:10`,
+    submittedAt: `${T} 06:55`,
+    submittedBy: "Priya Nair",
   },
 ];
 

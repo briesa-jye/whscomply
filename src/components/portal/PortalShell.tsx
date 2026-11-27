@@ -45,7 +45,13 @@ export function PortalShell({ children }: { children: ReactNode }) {
       href: "/portal/projects",
       label: "My projects",
       icon: "building",
-      badge: p.pending.length,
+      badge:
+        p.pending.length +
+        p.siteOnboardings.filter(
+          (o) =>
+            o.subId === p.subId &&
+            (o.status === "Draft" || o.status === "Declined"),
+        ).length,
     },
     {
       href: "/portal/swms",

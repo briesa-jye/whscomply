@@ -355,10 +355,15 @@ Choose **Log pre-start** once a day. Items without one show that no pre-start is
     category: "Plant and materials",
     icon: "flag",
     summary:
-      "Keep a register with a current safety data sheet for each product.",
+      "Keep a register with a current safety data sheet for each product, and onboard subcontractors' SWMS and SDS.",
     open: { href: "/dashboard/chemicals", label: "Open chemicals" },
-    body: `## The register
-Add each hazardous chemical with its supplier, hazard class, quantity and where it is stored. Attach the safety data sheet file.
+    body: `## Subcontractor onboarding
+When a subcontractor accepts an invitation to a project, an onboarding starts for that project. It supplies its SWMS and a safety data sheet for every hazardous chemical it will bring, or says it will bring none. Plant can be skipped at first and put forward later.
+
+Open **Chemical onboarding** to review it. Verify each SWMS and SDS, then choose **Approve for site**. You can decline with a reason, and the subcontractor corrects it and sends it again. This is a hold point: until you approve it, that subcontractor's workers cannot be approved for the site or signed on. Approved chemicals go onto the register, labelled with the subcontractor.
+
+## The register
+Add each hazardous chemical with its supplier, hazard class, quantity and where it is stored. Attach the safety data sheet file. Choose **Add chemical** for your own chemicals; it opens its own page.
 
 ## Keeping SDSs current
 - Products with **no SDS** are flagged.
