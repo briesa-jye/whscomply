@@ -56,6 +56,50 @@ export function Thumb({
   );
 }
 
+/** A plain picture for list rows (not clickable, so it can sit inside a link). Shows a placeholder when there is no photo. */
+export function Photo({
+  a,
+  className = "h-16 w-16",
+}: {
+  a?: Attachment;
+  className?: string;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!a || !a.mime.startsWith("image/")) return;
+    let u: string | null = null;
+    let live = true;
+    getFile(a.id)
+      .then((b) => {
+        if (b && live) {
+          u = URL.createObjectURL(b);
+          setUrl(u);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+      if (u) URL.revokeObjectURL(u);
+    };
+  }, [a]);
+
+  return (
+    <span
+      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-tint ${className}`}
+    >
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <span className="flex flex-col items-center gap-0.5 px-1 text-center text-[10px] leading-tight text-ink-soft">
+          <Icon name="settings" className="h-5 w-5" />
+          {a ? "" : "No photo"}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function AttachmentStrip({ files }: { files?: Attachment[] }) {
   if (!files?.length) return null;
   return (

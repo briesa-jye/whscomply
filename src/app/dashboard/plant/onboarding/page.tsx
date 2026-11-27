@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@/components/Icons";
+import { Photo } from "@/components/app/Attachments";
 import { useScope } from "@/components/app/DemoStore";
 import {
   btnDark,
@@ -68,8 +69,10 @@ export default function PlantOnboardingPage() {
                 <li key={p.id} className="border-b border-line last:border-0">
                   <Link
                     href={`/dashboard/plant/onboarding/${p.id}`}
-                    className="grid items-center gap-3 px-5 py-4 hover:bg-tint/60 md:grid-cols-[1.6fr_1fr_1fr_auto]"
+                    className="flex items-center gap-4 px-5 py-4 hover:bg-tint/60"
                   >
+                    <Photo a={p.photo?.[0]} className="h-16 w-16" />
+                    <div className="grid min-w-0 flex-1 items-center gap-3 md:grid-cols-[1.6fr_1fr_1fr_auto]">
                     <span className="min-w-0">
                       <span className="block truncate font-semibold">
                         {p.name}
@@ -101,6 +104,7 @@ export default function PlantOnboardingPage() {
                       </Pill>
                       <Icon name="arrow" className="h-4 w-4 text-ink-soft" />
                     </span>
+                    </div>
                   </Link>
                 </li>
               );
