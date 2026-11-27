@@ -1,5 +1,11 @@
 import { todayISO } from "./format";
-import type { Plant, PlantCheck, PlantOnboarding, Subcontractor } from "./data";
+import type {
+  Plant,
+  PlantCheck,
+  PlantOnboarding,
+  Subcontractor,
+  Worker,
+} from "./data";
 
 /*
  * What each kind of plant has to supply before it comes onto a site.
@@ -429,3 +435,52 @@ export function readingLeft(
 
 export const readingTone = (left: number, unit: "h" | "km") =>
   left <= (unit === "km" ? 500 : 25) ? ("owed" as const) : ("ok" as const);
+
+/** Words that identify a licence or ticket that lets someone operate each type. */
+const OPERATOR_TICKETS: Record<string, string[]> = {
+  forklift: ["forklift"],
+  telehandler: ["forklift", "telehandler"],
+  excavator: ["earthmoving", "excavator"],
+  "piling-rig": ["piling"],
+  "skid-steer": ["earthmoving", "skid"],
+  loader: ["earthmoving", "loader"],
+  "boom-ewp": ["ewp"],
+  "scissor-lift": ["ewp", "scissor"],
+  electrical: [],
+  other: ["competency"],
+  "mobile-crane": ["crane"],
+  "tower-crane": ["crane", "tower"],
+  "concrete-boom-portable": ["concrete"],
+  "concrete-boom-tower": ["concrete"],
+  hoist: ["hoist"],
+};
+
+/**
+ * Whether a worker holds a current licence or competency to operate this plant.
+ * Older plant records have no type, so they are not checked.
+ */
+export function operatorCheck(
+  w: Pick<Worker, "tickets">,
+  p: Pick<Plant, "typeKey">,
+): { ok: boolean; reason: string } {
+  const words = p.typeKey ? OPERATOR_TICKETS[p.typeKey] : undefined;
+  if (!words || words.length === 0) return { ok: true, reason: "" };
+  const match = w.tickets.filter((t) =>
+    words.some((k) => t.kind.toLowerCase().includes(k)),
+  );
+  if (match.length === 0)
+    return { ok: false, reason: "No matching licence or competency on file" };
+  if (match.every((t) => t.expires && daysUntil(t.expires) < 0))
+    return { ok: false, reason: "Licence or competency has expired" };
+  return { ok: true, reason: "" };
+}
+
+/** The checks made each day before plant is used. */
+export const PRESTART_CHECKS = [
+  "Fluid levels are right and there are no leaks",
+  "Guards, covers and safety devices are in place",
+  "Brakes, controls and emergency stops work",
+  "Lights, horn and alarms work",
+  "Tyres, tracks, outriggers or stabilisers are in good order",
+  "No new damage or defects",
+];

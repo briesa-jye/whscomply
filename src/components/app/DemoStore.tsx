@@ -93,6 +93,7 @@ import {
   type Worker,
 } from "@/lib/data";
 import {
+  operatorCheck,
   contractorPl,
   newPlantChecks,
   OPERATOR_LABEL,
@@ -562,6 +563,24 @@ type Store = Saved & {
   ) => void;
   logPrestart: (id: string) => void;
   logService: (id: string, nextService: string) => void;
+  /** add or remove someone from the people who may operate a piece of plant */
+  setPlantOperator: (id: string, workerId: string, on: boolean) => void;
+  /** the daily pre-start: who operated it, the meter reading, and the checks */
+  logPlantPrestart: (
+    id: string,
+    i: {
+      operatorId: string;
+      reading: number | null;
+      checks: { text: string; result: "pass" | "fail" | "na" }[];
+      note: string;
+    },
+  ) => void;
+  /** record a service or maintenance, with the reading it was done at and when it is next due */
+  recordPlantCare: (
+    id: string,
+    kind: "service" | "maintenance",
+    i: { readingNow: number | null; nextDate: string; nextReading: number | null },
+  ) => void;
   setPlantStatus: (
     id: string,
     status: Plant["status"],
@@ -2136,6 +2155,112 @@ const actions: Omit<Store, keyof Saved | "ready"> = {
         `${decision === "Approved" ? "approved" : "declined"} ${x.name} for ${projectName(s0, x.projectId)}`,
         "Submitted",
         decision,
+      ),
+    );
+  },
+  setPlantOperator: (id, workerId, on) =>
+    update((s) => ({
+      ...s,
+      plant: patchIn(s.plant, id, (p) => {
+        const cur = p.operators ?? [];
+        return {
+          ...p,
+          operators: on
+            ? cur.includes(workerId)
+              ? cur
+              : [...cur, workerId]
+            : cur.filter((w) => w !== workerId),
+        };
+      }),
+    })),
+  logPlantPrestart: (id, i) => {
+    const s0 = current();
+    const x = s0.plant.find((p) => p.id === id);
+    if (!x || plantApproval(x) !== "Approved" || x.status !== "In service") return;
+    const w = s0.workers.find((y) => y.id === i.operatorId);
+    if (!w || !w.inducted.includes(x.projectId) || !operatorCheck(w, x).ok) return;
+    if (x.typeKey && !(x.operators ?? []).includes(i.operatorId)) return;
+    if (x.meter && (i.reading === null || i.reading < x.meter.reading)) return;
+    const fails = i.checks.filter((c) => c.result === "fail").map((c) => c.text);
+    const failed = fails.length > 0;
+    const defect = failed ? i.note.trim() || fails.join("; ") : "";
+    act(
+      (s) => ({
+        ...s,
+        plant: patchIn(s.plant, id, (p) => ({
+          ...p,
+          lastPrestart: todayISO(),
+          meter:
+            p.meter && i.reading !== null
+              ? { ...p.meter, reading: i.reading, readAt: todayISO() }
+              : p.meter,
+          status: failed ? ("Out of service" as const) : p.status,
+          defect: failed ? defect : p.defect,
+          prestarts: [
+            {
+              at: stamp(),
+              operatorId: i.operatorId,
+              reading: i.reading,
+              result: failed ? ("fail" as const) : ("pass" as const),
+              note: i.note.trim(),
+            },
+            ...(p.prestarts ?? []),
+          ].slice(0, 30),
+        })),
+      }),
+      ev(
+        "Plant",
+        x.projectId,
+        `${failed ? "failed" : "completed"} the pre-start for ${x.name}, operated by ${w.name}`,
+        "Not checked",
+        failed ? "Defect found" : "Checked",
+      ),
+    );
+  },
+  recordPlantCare: (id, kind, i) => {
+    const x = current().plant.find((p) => p.id === id);
+    if (!x) return;
+    act(
+      (s) => ({
+        ...s,
+        plant: patchIn(s.plant, id, (p) => {
+          const meter =
+            p.meter && i.readingNow !== null
+              ? {
+                  ...p.meter,
+                  reading: Math.max(p.meter.reading, i.readingNow),
+                  readAt: todayISO(),
+                }
+              : p.meter;
+          if (kind === "service")
+            return {
+              ...p,
+              meter,
+              lastService: todayISO(),
+              nextService: i.nextDate,
+              serviceReading:
+                p.meter && i.readingNow !== null && i.nextReading !== null
+                  ? { last: i.readingNow, next: i.nextReading }
+                  : p.serviceReading,
+            };
+          return {
+            ...p,
+            meter,
+            maintenance: {
+              last: todayISO(),
+              next: i.nextDate,
+              lastReading: i.readingNow ?? p.maintenance?.lastReading,
+              nextReading: i.nextReading ?? p.maintenance?.nextReading,
+            },
+          };
+        }),
+      }),
+      ev(
+        "Plant",
+        x.projectId,
+        `recorded ${kind === "service" ? "a service" : "maintenance"} for ${x.name}`,
+        kind === "service" ? x.lastService : (x.maintenance?.last ?? "Not recorded"),
+        todayISO(),
       ),
     );
   },

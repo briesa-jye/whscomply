@@ -350,8 +350,13 @@ Service is the scheduled check-up, fluid and part changes, or a call-out to fix 
 ## The register
 Approved plant is grouped by site, with company plant and contractor plant shown separately, the project on every row and the plant's photo. Contractor plant is labelled. Choose **Take off site** when it leaves, and **Return to site** to bring it back.
 
-## Each day
-Choose **Log pre-start** once a day. Items without one show that no pre-start is done today.
+## Operators and the daily pre-start
+Open a piece of plant to choose its operators. They are picked from people inducted to that site, including labour hire, and each needs the right licence or competency for the plant type. Plant cannot be pre-started until it has an operator.
+
+Choose **Log pre-start** once a day. It opens its own page: pick who is operating it, enter the meter reading (it cannot be lower than the last one), and answer the daily checks. A failed check takes the plant out of service. Items without a pre-start show that none is done today.
+
+## Service and maintenance
+Choose **Record service** or **Record maintenance** to open its page. Enter the reading it was done at and when it is next due, by date and by meter. Plant that is close to or past a due reading appears in your needs-action list.
 
 ## Defects
 **Report defect** takes an item **out of service** and puts it in your needs-attention list. Choose **Return to service** once it is fixed.

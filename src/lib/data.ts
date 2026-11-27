@@ -497,6 +497,20 @@ export type Plant = {
   };
   /** the profile photo of the whole machine */
   photo?: Attachment[];
+  /** workers who may operate it, chosen from those inducted to its site */
+  operators?: string[];
+  /** the daily pre-starts, newest first */
+  prestarts?: PlantPrestart[];
+};
+
+/** One daily pre-start: who operated the plant and what the meter read. */
+export type PlantPrestart = {
+  /** "yyyy-mm-dd hh:mm" */
+  at: string;
+  operatorId: string;
+  reading: number | null;
+  result: "pass" | "fail";
+  note: string;
 };
 
 /** A document supplied for plant going onto a site, checked by the builder. */
@@ -823,6 +837,9 @@ export const TICKET_KINDS = [
   "High risk work licence, crane",
   "High risk work licence, EWP",
   "High risk work licence, forklift",
+  "Verification of competency, earthmoving plant",
+  "Verification of competency, piling rig",
+  "Verification of competency, concrete placing boom",
   "Electrical licence",
   "Plumbing licence",
   "Working at heights",

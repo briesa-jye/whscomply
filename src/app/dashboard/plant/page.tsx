@@ -38,7 +38,6 @@ export default function PlantPage() {
   const s = useScope();
   const [f, setF] = useState<(typeof FILTERS)[number]>("All");
   const [owner, setOwner] = useState<(typeof OWNERS)[number]>("All plant");
-  const [service, setService] = useState<Plant | null>(null);
   const [tag, setTag] = useState<Plant | null>(null);
 
   // Plant only appears here once it has been approved for site.
@@ -106,7 +105,12 @@ export default function PlantPage() {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-semibold">{p.name}</p>
+              <Link
+                href={`/dashboard/plant/${p.id}`}
+                className="font-semibold hover:underline"
+              >
+                {p.name}
+              </Link>
               <p className="text-xs text-ink-soft">
                 {p.typeKey ? type.label : p.kind} · {p.serial}
                 {p.meter && ` · ${p.meter.reading} ${p.meter.kind}`}
@@ -156,24 +160,44 @@ export default function PlantPage() {
               </Pill>
             )}
             {tg && <Pill tone={tg.tone}>Test and tag {tg.text}</Pill>}
+            {p.typeKey && !p.operators?.length ? (
+              <Pill tone="owed">No operators assigned</Pill>
+            ) : p.operators?.length ? (
+              <Pill tone="neutral">
+                {p.operators.length} operator{p.operators.length === 1 ? "" : "s"}
+              </Pill>
+            ) : null}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            {p.status === "In service" && !prestartDone && (
-              <button
-                type="button"
-                onClick={() => s.logPrestart(p.id)}
-                className={`${btnDark} !px-3 !py-1.5 text-xs`}
-              >
-                <Icon name="check" className="h-3.5 w-3.5" /> Log pre-start
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setService(p)}
+            {p.status === "In service" &&
+              !prestartDone &&
+              (p.typeKey && !p.operators?.length ? (
+                <Link
+                  href={`/dashboard/plant/${p.id}`}
+                  className={`${btnDark} !px-3 !py-1.5 text-xs`}
+                >
+                  Assign operators
+                </Link>
+              ) : (
+                <Link
+                  href={`/dashboard/plant/${p.id}/prestart`}
+                  className={`${btnDark} !px-3 !py-1.5 text-xs`}
+                >
+                  <Icon name="check" className="h-3.5 w-3.5" /> Log pre-start
+                </Link>
+              ))}
+            <Link
+              href={`/dashboard/plant/${p.id}/care?kind=service`}
               className={`${btnLight} !px-3 !py-1.5 text-xs`}
             >
               Record service
-            </button>
+            </Link>
+            <Link
+              href={`/dashboard/plant/${p.id}/care?kind=maintenance`}
+              className={`${btnLight} !px-3 !py-1.5 text-xs`}
+            >
+              Record maintenance
+            </Link>
             {p.tagDue !== null && (
               <button
                 type="button"
@@ -323,17 +347,6 @@ export default function PlantPage() {
         </div>
       )}
 
-      {service && (
-        <DateModal
-          title={`Record a service: ${service.name}`}
-          label="Next service due"
-          sub="The service is recorded as done today"
-          initial={addDays(90)}
-          submit="Save service"
-          onClose={() => setService(null)}
-          onSave={(d) => s.logService(service.id, d)}
-        />
-      )}
       {tag && (
         <DateModal
           title={`Record test and tag: ${tag.name}`}
